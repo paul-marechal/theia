@@ -8,13 +8,16 @@
 import { injectable, inject } from "inversify";
 import { h } from "@phosphor/virtualdom";
 import { DiffUris } from '@theia/editor/lib/browser/diff-uris';
-import { OpenerService, open, StatefulWidget, SELECTED_CLASS } from "@theia/core/lib/browser";
+import { OpenerService, open, StatefulWidget, SELECTED_CLASS, WidgetManager, ApplicationShell } from "@theia/core/lib/browser";
 import { GIT_RESOURCE_SCHEME } from '../git-resource';
 import URI from "@theia/core/lib/common/uri";
 import { GIT_HISTORY, GIT_HISTORY_MAX_COUNT } from './git-history-contribution';
 import { GitFileStatus, Git, GitFileChange } from '../../common';
 import { GitBaseWidget, GitFileChangeNode } from "../git-base-widget";
 import { FileSystem } from "@theia/filesystem/lib/common";
+import { GitDiffContribution } from "../diff/git-diff-contribution";
+import { GitCommitDetailWidget, GitCommitDetailWidgetOptions, GIT_COMMIT_DETAIL } from "./git-commit-detail-widget";
+import { Md5 } from "ts-md5";
 
 export interface GitCommitNode {
     readonly authorName: string;
@@ -46,8 +49,11 @@ export class GitHistoryWidget extends GitBaseWidget<GitHistoryListNode> implemen
 
     constructor(
         @inject(OpenerService) protected readonly openerService: OpenerService,
+        @inject(ApplicationShell) protected readonly shell: ApplicationShell,
         @inject(FileSystem) protected readonly fileSystem: FileSystem,
-        @inject(Git) protected readonly git: Git) {
+        @inject(Git) protected readonly git: Git,
+        @inject(WidgetManager) protected readonly widgetManager: WidgetManager,
+        @inject(GitDiffContribution) protected readonly diffContribution: GitDiffContribution) {
         super();
         this.id = GIT_HISTORY;
         this.scrollContainer = 'git-history-list-container';
@@ -98,6 +104,7 @@ export class GitHistoryWidget extends GitBaseWidget<GitHistoryListNode> implemen
                             authorDateRelative: commit.authorDateRelative,
                             commitSha: commit.sha,
                             commitMessage: commit.summary,
+                            messageBody: commit.body,
                             fileChangeNodes,
                             expanded: false,
                             selected: false
@@ -196,6 +203,10 @@ export class GitHistoryWidget extends GitBaseWidget<GitHistoryListNode> implemen
             expansionToggleIcon = "caret-down";
         }
         const headEl = [];
+        const hash = Md5.hashStr(commit.authorEmail);
+        const gravatar = h.div({ className: "image-container" },
+            h.img({ className: "gravatar", src: `https://www.gravatar.com/avatar/${hash}?d=robohash` }));
+        headEl.push(gravatar);
         const expansionToggle = h.div(
             {
                 className: "expansionToggle noselect"
@@ -217,7 +228,11 @@ export class GitHistoryWidget extends GitBaseWidget<GitHistoryListNode> implemen
                 commit.authorDateRelative + ' by ' + commit.authorName
             )
         );
-        headEl.push(label);
+        const detailBtn = h.div({
+            className: "fa fa-eye detailButton",
+            onclick: () => this.openDetailWidget(commit)
+        });
+        headEl.push(label, detailBtn);
         if (!this.singleFileMode) {
             headEl.push(expansionToggle);
         }
@@ -238,6 +253,25 @@ export class GitHistoryWidget extends GitBaseWidget<GitHistoryListNode> implemen
                 }
             }
         }, content);
+    }
+
+    protected async openDetailWidget(commit: GitCommitNode) {
+        const range = {
+            fromRevision: commit.commitSha + "~1",
+            toRevision: commit.commitSha
+        };
+        const widget = await this.widgetManager.getOrCreateWidget<GitCommitDetailWidget>(GIT_COMMIT_DETAIL,
+            <GitCommitDetailWidgetOptions>{
+                widgetId: "commit" + commit.commitSha,
+                widgetLabel: commit.commitSha,
+                commit,
+                diffOptions: { range }
+            });
+        await widget.setContent({ range });
+        this.shell.addWidget(widget, {
+            area: 'main'
+        });
+        this.shell.activateWidget(widget.id);
     }
 
     protected renderFileChangeList(fileChanges: GitFileChangeNode[], commitSha: string): h.Child {
@@ -320,7 +354,8 @@ export class GitHistoryWidget extends GitBaseWidget<GitHistoryListNode> implemen
                 if (this.singleFileMode) {
                     this.openFile(selected.fileChangeNodes[0], selected.commitSha);
                 } else {
-                    selected.expanded = !selected.expanded;
+                    this.openDetailWidget(selected);
+                    // selected.expanded = !selected.expanded;
                 }
             } else if (GitFileChangeNode.is(selected)) {
                 this.openFile(selected, selected.commitSha || "");
