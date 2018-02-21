@@ -30,22 +30,32 @@ export class DirtyDiffComputer extends DiffComputer {
             if (change.added) {
                 // case: addition
                 const start = lastLine + 1;
-                const end = lastLine = lastLine + change.count!;
+                const end = lastLine + change.count!;
                 added.push(<LineRange>{ start, end });
+                lastLine = end;
             } else if (change.removed && next && next.added) {
-                if (i === 0 && next.value.length === 1 && next.value[0].length === 0) {
+                const isFirstChange = i === 0;
+                const isLastChange = i === changes.length - 2;
+                const isNextEmptyLine = next.value.length === 1 && next.value[0].length === 0;
+                const isPrevEmptyLine = change.value.length === 1 && change.value[0].length === 0;
+
+                if (isFirstChange && isNextEmptyLine) {
                     // special case: removing at the beginning
                     removed.push(0);
-                } else if (i === 0 && change.value.length === 1 && change.value[0].length === 0) {
+                } else if (isFirstChange && isPrevEmptyLine) {
                     // special case: adding at the beginning
                     const start = 0;
-                    const end = lastLine = next.count! - 1;
+                    const end = next.count! - 1;
                     added.push(<LineRange>{ start, end });
+                    lastLine = end;
+                } else if (isLastChange && isNextEmptyLine) {
+                    removed.push(lastLine + 1 /* = empty line */);
                 } else {
                     // default case is a modification
                     const start = lastLine + 1;
-                    const end = lastLine = lastLine + next.count!;
+                    const end = lastLine + next.count!;
                     modified.push(<LineRange>{ start, end });
+                    lastLine = end;
                 }
                 i++; // consume next eagerly
             } else if (change.removed && !(next && next.added)) {

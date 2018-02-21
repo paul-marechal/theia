@@ -234,6 +234,41 @@ describe("dirty-diff-computer", () => {
         });
     });
 
+    it("multiple additions", () => {
+        const dirtyDiff = dirtyDiffComputer.computeDirtyDiff(
+            [
+                "first line",
+                "",
+                "foo changed on master",
+                "bar changed on master",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "last line"
+            ],
+            [
+                "first line",
+                "",
+                "foo changed on master",
+                "bar changed on master",
+                "",
+                "NEW TEXT",
+                "",
+                "",
+                "",
+                "last line",
+                "",
+                ""
+            ]);
+        expect(dirtyDiff).to.be.deep.equal(<DirtyDiff>{
+            removed: [11],
+            added: [{ start: 5, end: 5 }, { start: 9, end: 9 }],
+            modified: [],
+        });
+    });
+
 });
 
 function createDirtyDiff(previous: string, modified: string) {
