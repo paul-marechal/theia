@@ -22,11 +22,14 @@ import { GitRepositoryProvider } from './git-repository-provider';
 import { GitQuickOpenService } from './git-quick-open-service';
 import { LabelProviderContribution } from '@theia/core/lib/browser/label-provider';
 import { GitUriLabelProviderContribution } from './git-uri-label-contribution';
+import { bindDirtyDiff } from './dirty-diff/dirty-diff-module';
+
 import '../../src/browser/style/index.css';
 
 export default new ContainerModule(bind => {
     bindGitDiffModule(bind);
     bindGitHistoryModule(bind);
+    bindDirtyDiff(bind);
     bind(GitWatcherServerProxy).toDynamicValue(context => WebSocketConnectionProvider.createProxy(context.container, GitWatcherPath)).inSingletonScope();
     bind(GitWatcherServer).to(ReconnectingGitWatcherServer).inSingletonScope();
     bind(GitWatcher).toSelf().inSingletonScope();
