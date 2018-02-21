@@ -83,6 +83,18 @@ export interface DecorationType {
      */
     border?: string;
     /**
+     * CSS property `border-color`, to be applied to the text within a decoration.
+     */
+    borderColor?: string;
+    /**
+     * CSS property `border-style`, to be applied to the text within a decoration.
+     */
+    borderStyle?: string;
+    /**
+     * CSS property `border-width`, to be applied to the text within a decoration.
+     */
+    borderWidth?: string;
+    /**
      * CSS property `color`.
      */
     color?: string;
