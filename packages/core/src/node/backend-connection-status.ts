@@ -5,15 +5,14 @@
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-import * as express from 'express';
 import { injectable } from 'inversify';
-import { BackendApplicationContribution } from './backend-application';
+import { BackendApplication, BackendApplicationContribution } from './backend-application';
 
 @injectable()
 export class BackendConnectionStatusEndpoint implements BackendApplicationContribution {
 
-    configure(app: express.Application): void {
-        app.get('/alive', (request, response) => {
+    configure(backend: BackendApplication): void {
+        backend.router.get('/alive', (request, response) => {
             response.contentType('application/json');
             return response.send();
         });

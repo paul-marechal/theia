@@ -5,11 +5,10 @@
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-import * as http from 'http';
-import * as https from 'https';
+import * as path from 'path';
 import { ContainerModule, injectable, inject, named } from "inversify";
 import { bindContributionProvider, ContributionProvider, ConnectionHandler } from '../../common';
-import { BackendApplicationContribution } from "../backend-application";
+import { BackendApplicationContribution, BackendApplication } from "../backend-application";
 import { createServerWebSocketConnection } from "./connection";
 
 export const messagingBackendModule = new ContainerModule(bind => {
@@ -20,16 +19,16 @@ export const messagingBackendModule = new ContainerModule(bind => {
 @injectable()
 export class MessagingContribution implements BackendApplicationContribution {
 
-    constructor( @inject(ContributionProvider) @named(ConnectionHandler) protected readonly handlers: ContributionProvider<ConnectionHandler>) {
+    constructor(@inject(ContributionProvider) @named(ConnectionHandler) protected readonly handlers: ContributionProvider<ConnectionHandler>) {
     }
 
-    onStart(server: http.Server | https.Server): void {
+    onStart(backend: BackendApplication): void {
         for (const handler of this.handlers.getContributions()) {
-            const path = handler.path;
+            const uri = path.join(backend.root, handler.path);
             try {
                 createServerWebSocketConnection({
-                    server,
-                    path
+                    server: backend.server,
+                    path: uri,
                 }, connection => handler.onConnection(connection));
             } catch (error) {
                 console.error(error);

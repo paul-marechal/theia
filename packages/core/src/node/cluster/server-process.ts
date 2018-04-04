@@ -11,7 +11,7 @@ import * as https from 'https';
 import * as cluster from 'cluster';
 import { injectable, inject } from "inversify";
 import { createRemoteMaster, IMasterProcess, IServerProcess } from './cluster-protocol';
-import { BackendApplicationContribution } from '../backend-application';
+import { BackendApplicationContribution, BackendApplication } from '../backend-application';
 
 export const RemoteMasterProcessFactory = Symbol('RemoteMasterProcessFactory');
 export type RemoteMasterProcessFactory = (serverProcess: IServerProcess) => IMasterProcess;
@@ -45,9 +45,9 @@ export class ServerProcess implements BackendApplicationContribution {
         this.master.onDidInitialize();
     }
 
-    onStart(server: http.Server | https.Server): void {
-        this.server = server;
-        server.on('connection', socket => {
+    onStart(backend: BackendApplication): void {
+        this.server = backend.server;
+        this.server.on('connection', socket => {
             this.sockets.add(socket);
             socket.on('close', () => this.sockets.delete(socket));
         });

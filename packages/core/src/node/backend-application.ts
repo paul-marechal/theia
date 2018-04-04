@@ -5,6 +5,7 @@
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
  */
 
+import * as path from 'path';
 import * as http from 'http';
 import * as https from 'https';
 import * as express from 'express';
@@ -19,16 +20,17 @@ import * as fs from "fs-extra";
 export const BackendApplicationContribution = Symbol("BackendApplicationContribution");
 export interface BackendApplicationContribution {
     initialize?(): void;
-    configure?(app: express.Application): void;
-    onStart?(server: http.Server | https.Server): void;
+    configure?(backend: BackendApplication): void;
+    onStart?(backend: BackendApplication): void;
 
     /**
      * Called when the backend application shuts down. Contributions must perform only synchronous operations.
      * Any kind of additional asynchronous work queued in the event loop will be ignored and abandoned.
      */
-    onStop?(app?: express.Application): void;
+    onStop?(backend?: BackendApplication): void;
 }
 
+const defaultRoot = '/';
 const defaultPort = BackendProcess.electron ? 0 : 3000;
 const defaultHost = 'localhost';
 const defaultSSL = false;
@@ -36,6 +38,7 @@ const defaultSSL = false;
 @injectable()
 export class BackendApplicationCliContribution implements CliContribution {
 
+    root: string;
     port: number;
     hostname: string | undefined;
     ssl: boolean | undefined;
@@ -44,6 +47,7 @@ export class BackendApplicationCliContribution implements CliContribution {
 
     configure(conf: yargs.Argv): void {
         yargs.option('port', { alias: 'p', description: 'The port the backend server listens on.', type: 'number', default: defaultPort });
+        yargs.option('root', { description: 'The root URI to listen on', type: 'string', default: defaultRoot });
         yargs.option('hostname', { description: 'The allowed hostname for connections.', type: 'string', default: defaultHost });
         yargs.option('ssl', { description: 'Use SSL (HTTPS), cert and certkey must also be set', type: 'boolean', default: defaultSSL });
         yargs.option('cert', { description: 'Path to SSL certificate.', type: 'string' });
@@ -51,6 +55,7 @@ export class BackendApplicationCliContribution implements CliContribution {
     }
 
     setArguments(args: yargs.Arguments): void {
+        this.root = path.normalize(args.root);
         this.port = args.port;
         this.hostname = args.hostname;
         this.ssl = args.ssl;
@@ -65,7 +70,11 @@ export class BackendApplicationCliContribution implements CliContribution {
 @injectable()
 export class BackendApplication {
 
-    protected readonly app: express.Application = express();
+    public server: http.Server | https.Server;
+    readonly app: express.Application = express();
+
+    readonly root: string = defaultRoot;
+    readonly router: express.Router = express.Router();
 
     constructor(
         @inject(ContributionProvider) @named(BackendApplicationContribution)
@@ -89,6 +98,11 @@ export class BackendApplication {
         // Handles `kill pid`.
         process.on('SIGTERM', () => process.exit(0));
 
+        // Change the root of the application
+        this.root = cliParams.root;
+        this.app.use(this.root, this.router);
+        this.logger.info(`Theia's root: ${cliParams.root}`);
+
         for (const contribution of this.contributionsProvider.getContributions()) {
             if (contribution.initialize) {
                 try {
@@ -102,7 +116,7 @@ export class BackendApplication {
         for (const contribution of this.contributionsProvider.getContributions()) {
             if (contribution.configure) {
                 try {
-                    contribution.configure(this.app);
+                    contribution.configure(this);
                 } catch (err) {
                     this.logger.error(err.toString());
                 }
@@ -111,12 +125,11 @@ export class BackendApplication {
     }
 
     use(...handlers: express.Handler[]): void {
-        this.app.use(...handlers);
+        this.router.use(...handlers);
     }
 
     async start(aPort?: number, aHostname?: string): Promise<http.Server | https.Server> {
         const deferred = new Deferred<http.Server | https.Server>();
-        let server: http.Server | https.Server;
         const port = aPort !== undefined ? aPort : this.cliParams.port;
         const hostname = aHostname !== undefined ? aHostname : this.cliParams.hostname;
 
@@ -145,29 +158,30 @@ export class BackendApplication {
                 await this.logger.error(`Can't read certificate`);
                 throw err;
             }
-            server = https.createServer({ key, cert }, this.app);
+            this.server = https.createServer({ key, cert }, this.app);
         } else {
-            server = http.createServer(this.app);
+            this.server = http.createServer(this.app);
         }
 
-        server.listen(port, hostname, () => {
+        this.server.listen(port, hostname, () => {
             const scheme = this.cliParams.ssl ? 'https' : 'http';
-            this.logger.info(`Theia app listening on ${scheme}://${hostname || 'localhost'}:${server.address().port}.`);
-            deferred.resolve(server);
+            this.logger.info(`Theia app listening on ${scheme}://${hostname || 'localhost'}:${this.server.address().port}${this.root}.`);
+            deferred.resolve(this.server);
         });
 
         /* Allow any number of websocket servers.  */
-        server.setMaxListeners(0);
+        this.server.setMaxListeners(0);
 
         for (const contrib of this.contributionsProvider.getContributions()) {
             if (contrib.onStart) {
                 try {
-                    contrib.onStart(server);
+                    contrib.onStart(this);
                 } catch (err) {
                     this.logger.error(err.toString());
                 }
             }
         }
+
         return deferred.promise;
     }
 
@@ -175,7 +189,7 @@ export class BackendApplication {
         for (const contrib of this.contributionsProvider.getContributions()) {
             if (contrib.onStop) {
                 try {
-                    contrib.onStop(this.app);
+                    contrib.onStop(this);
                 } catch (err) {
                     this.logger.error(err);
                 }

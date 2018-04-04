@@ -42,7 +42,7 @@ function start(port, host) {
     const cliManager = container.get(CliManager);
     cliManager.initializeCli();
     const application = container.get(BackendApplication);
-    application.use(express.static(path.join(__dirname, '../../lib'), {
+    application.router.use(express.static(path.join(__dirname, '../../lib'), {
         index: 'index.html'
     }));
     return application.start(port, host);

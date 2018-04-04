@@ -14,7 +14,7 @@ import * as http from 'http';
 import * as https from 'https';
 import { isWindows } from '@theia/core/lib/common/os';
 import URI from "@theia/core/lib/common/uri";
-import { FileUri } from "@theia/core/lib/node";
+import { FileUri, CliManager } from "@theia/core/lib/node";
 import { terminalsPath } from '@theia/terminal/lib/common/terminal-protocol';
 import { expectThrowsAsync } from '@theia/core/lib/common/test/expect';
 
@@ -49,9 +49,13 @@ describe('Task server / back-end', function () {
     before(async function () {
         process.argv.push(`--root-dir=${wsRoot}`);
 
+        const cliManager = testContainer.get(CliManager);
+        cliManager.initializeCli();
+
         application = testContainer.get(BackendApplication);
         taskServer = testContainer.get(TaskServer);
         taskServer.setClient(taskWatcher.getTaskClient());
+
         server = await application.start();
     });
 

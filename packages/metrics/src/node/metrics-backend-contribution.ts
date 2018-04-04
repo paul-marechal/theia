@@ -6,11 +6,8 @@
  */
 
 import { injectable, inject } from 'inversify';
-import * as http from 'http';
-import * as https from 'https';
-import * as express from 'express';
 import { ILogger } from "@theia/core/lib/common";
-import { BackendApplicationContribution } from '@theia/core/lib/node';
+import { BackendApplicationContribution, BackendApplication } from '@theia/core/lib/node';
 import * as prom from 'prom-client';
 
 @injectable()
@@ -19,13 +16,13 @@ export class MetricsBackendContribution implements BackendApplicationContributio
         @inject(ILogger) protected readonly logger: ILogger) {
     }
 
-    configure(app: express.Application) {
-        app.get('/metrics', (req, res) => {
+    configure(backend: BackendApplication) {
+        backend.router.get('/metrics', (req, res) => {
             res.send(prom.register.metrics().toString());
         });
     }
 
-    onStart(server: http.Server | https.Server): void {
+    onStart(backend: BackendApplication): void {
         const collectDefaultMetrics = prom.collectDefaultMetrics;
 
         // Probe every 5th second.

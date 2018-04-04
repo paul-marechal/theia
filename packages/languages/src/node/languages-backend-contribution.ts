@@ -5,12 +5,10 @@
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-import * as http from 'http';
-import * as https from 'https';
 import { injectable, inject, named } from "inversify";
 import { createWebSocketConnection } from "vscode-ws-jsonrpc/lib/server";
 import { ContributionProvider } from '@theia/core/lib/common';
-import { BackendApplicationContribution } from '@theia/core/lib/node';
+import { BackendApplicationContribution, BackendApplication } from '@theia/core/lib/node';
 import { openJsonRpcSocket } from '@theia/core/lib/node';
 import { LanguageServerContribution, LanguageContribution } from "./language-server-contribution";
 import { ILogger } from '@theia/core/lib/common/logger';
@@ -23,10 +21,13 @@ export class LanguagesBackendContribution implements BackendApplicationContribut
         @inject(ILogger) protected logger: ILogger
     ) { }
 
-    onStart(server: http.Server | https.Server): void {
+    onStart(backend: BackendApplication): void {
         for (const contribution of this.contributors.getContributions()) {
             const path = LanguageContribution.getPath(contribution);
-            openJsonRpcSocket({ server, path }, socket => {
+            openJsonRpcSocket({
+                server: backend.server,
+                path
+            }, socket => {
                 try {
                     const connection = createWebSocketConnection(socket);
                     contribution.start(connection);

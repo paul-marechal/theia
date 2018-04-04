@@ -12,6 +12,7 @@ import * as ws from 'ws';
 import * as http from 'http';
 import * as https from 'https';
 import { terminalsPath } from '../common/terminal-protocol';
+import { CliManager } from '@theia/core/lib/node';
 
 describe('Terminal Backend Contribution', function () {
 
@@ -20,6 +21,9 @@ describe('Terminal Backend Contribution', function () {
     let shellTerminalServer: IShellTerminalServer;
 
     before(async function () {
+        const cliManager = testContainer.get(CliManager);
+        cliManager.initializeCli();
+
         const application = testContainer.get(BackendApplication);
         shellTerminalServer = testContainer.get(IShellTerminalServer);
         server = await application.start();
