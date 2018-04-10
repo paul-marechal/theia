@@ -24,8 +24,10 @@ export interface CliContribution {
 @injectable()
 export class CliManager {
 
-    constructor( @inject(ContributionProvider) @named(CliContribution)
-    protected readonly contributionsProvider: ContributionProvider<CliContribution>) { }
+    constructor(
+        @inject(ContributionProvider) @named(CliContribution)
+        protected readonly contributionsProvider: ContributionProvider<CliContribution>
+    ) { }
 
     initializeCli(): void {
         const pack = require('../../package.json');

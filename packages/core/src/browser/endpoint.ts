@@ -17,10 +17,14 @@ export class Endpoint {
     static readonly PROTO_WSS: string = "wss:";
     static readonly PROTO_FILE: string = "file:";
 
+    protected readonly uri: URI;
+
     constructor(
         protected readonly options: Endpoint.Options = {},
         protected readonly location: Endpoint.Location = window.location
-    ) { }
+    ) {
+        this.uri = new URI(location.toString());
+    }
 
     getWebSocketUrl(): URI {
         return new URI(`${this.wsScheme}//${this.host}${this.pathname}${this.path}`);
@@ -32,39 +36,26 @@ export class Endpoint {
 
     protected get pathname() {
         if (this.location.protocol === Endpoint.PROTO_FILE) {
-            return '';
+            return ''; // change here for electron ?
         }
-        if (this.location.pathname === '/') {
-            return '';
-        }
-        if (this.location.pathname.endsWith('/')) {
-            return this.location.pathname.substr(0, this.location.pathname.length - 1);
-        }
-        return this.location.pathname;
+        const split = this.location.pathname.split('/');
+        return split.slice(0, split.length - 1).join('/');
     }
 
     protected get host() {
+        const remote = this.uri.searchQuery('remote');
+        if (remote) {
+            return remote;
+        }
         if (this.location.host) {
             return this.location.host;
         }
-        return 'localhost:' + this.port;
+        return 'localhost' + this.port;
     }
 
     protected get port(): string {
-        return this.getSearchParam('port', '3000');
-    }
-
-    protected getSearchParam(name: string, defaultValue: string): string {
-        const search = this.location.search;
-        if (!search) {
-            return defaultValue;
-        }
-        return search.substr(1).split('&')
-            .filter(value => value.startsWith(name + '='))
-            .map(value => {
-                const encoded = value.substr(name.length + 1);
-                return decodeURIComponent(encoded);
-            })[0] || defaultValue;
+        const port = this.uri.authority.split(':', 2)[1];
+        return port ? `:${port}` : '';
     }
 
     protected get wsScheme() {

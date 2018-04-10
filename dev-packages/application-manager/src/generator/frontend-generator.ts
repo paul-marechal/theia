@@ -85,12 +85,21 @@ if (process.env.LC_ALL) {
 }
 process.env.LC_NUMERIC = 'C';
 
+const yargs = require('yargs');
 const { join } = require('path');
 const { isMaster } = require('cluster');
 const { fork } = require('child_process');
 const { app, BrowserWindow, ipcMain } = require('electron');
 
+const index = 'file://' + join(__dirname, '../../lib/index.html');
 const windows = [];
+
+// parsing the command line arguments to fetch the remote option
+const parsed = yargs
+    .option('remote', { description: 'specify a remote endpoint to connect to (\`host:port\`)', type: 'string'})
+    .help().argv;
+
+const remote = parsed.remote;
 
 function createNewWindow(theUrl) {
     const newWindow = new BrowserWindow({ width: 1024, height: 728, show: !!theUrl });
@@ -121,6 +130,16 @@ function createNewWindow(theUrl) {
     return newWindow;
 }
 
+function loadWindow(window, port) {
+    let query = '?remote=';
+    if (!!remote) {
+        query += remote;
+    } else {
+        query += 'localhost:' + port;
+    }
+    window.loadURL(index + query);
+}
+
 if (isMaster) {
     app.on('window-all-closed', () => {
         if (process.platform !== 'darwin') {
@@ -131,42 +150,45 @@ if (isMaster) {
         createNewWindow(url);
     });
     app.on('ready', () => {
-        // Check whether we are in bundled application or development mode.
-        const devMode = process.defaultApp || /node_modules[\/]electron[\/]/.test(process.execPath);
         const mainWindow = createNewWindow();
-        const loadMainWindow = (port) => {
-            mainWindow.loadURL('file://' + join(__dirname, '../../lib/index.html') + '?port=' + port);
-        };
-        const mainPath = join(__dirname, '..', 'backend', 'main');
-        // We need to distinguish between bundled application and development mode when starting the clusters.
-        // See: https://github.com/electron/electron/issues/6337#issuecomment-230183287
-        if (devMode) {
-            require(mainPath).then(address => {
-                loadMainWindow(address.port);
-            }).catch((error) => {
-                console.error(error);
-                app.exit(1);
-            });
+
+        if (!remote) {
+            // Check whether we are in bundled application or development mode.
+            const devMode = process.defaultApp || /node_modules[/]electron[/]/.test(process.execPath);
+            const mainPath = join(__dirname, '..', 'backend', 'main');
+
+            // We need to distinguish between bundled application and development mode when starting the clusters.
+            // See: https://github.com/electron/electron/issues/6337#issuecomment-230183287
+            if (devMode) {
+                require(mainPath).then(address => {
+                    loadWindow(mainWindow, address.port);
+                }).catch((error) => {
+                    console.error(error);
+                    app.exit(1);
+                });
+            } else {
+                const cp = fork(mainPath);
+                cp.on('message', (message) => {
+                    loadWindow(mainWindow, message);
+                });
+                cp.on('error', (error) => {
+                    console.error(error);
+                    app.exit(1);
+                });
+                app.on('quit', () => {
+                    // If we forked the process for the clusters, we need to manually terminate it.
+                    // See: https://github.com/theia-ide/theia/issues/835
+                    process.kill(cp.pid);
+                });
+            }
         } else {
-            const cp = fork(mainPath);
-            cp.on('message', (message) => {
-                loadMainWindow(message);
-            });
-            cp.on('error', (error) => {
-                console.error(error);
-                app.exit(1);
-            });
-            app.on('quit', () => {
-                // If we forked the process for the clusters, we need to manually terminate it.
-                // See: https://github.com/theia-ide/theia/issues/835
-                process.kill(cp.pid);
-            });
+            loadWindow(mainWindow);
         }
     });
-} else {
+} else if (!remote) {
     require('../backend/main');
 }
-`;
+        `;
     }
 
 }

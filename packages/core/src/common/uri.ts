@@ -176,4 +176,20 @@ export default class URI {
         return this.codeUri.toString(skipEncoding);
     }
 
+    /**
+     * Returns the value for a key from the query
+     * @param search key to look for
+     * @param fallback
+     */
+    searchQuery(search: string, fallback?: string): string | undefined {
+        for (const association of this.query.split('&')) {
+            const split = association.split('=');
+            const key = decodeURIComponent(split[0]);
+            if (search === key) {
+                return decodeURIComponent(split[1]);
+            }
+        }
+        return fallback;
+    }
+
 }
