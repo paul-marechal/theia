@@ -10,7 +10,7 @@ import * as yargs from 'yargs';
 import * as fs from 'fs-extra';
 import * as os from 'os';
 
-import { injectable, inject } from "inversify";
+import { injectable, inject, postConstruct } from "inversify";
 import { FileUri } from '@theia/core/lib/node';
 import { CliContribution } from '@theia/core/lib/node/cli';
 import { Deferred } from '@theia/core/lib/common/promise-util';
@@ -50,18 +50,18 @@ export class DefaultWorkspaceServer implements WorkspaceServer {
 
     protected root: Promise<string | undefined>;
 
-    constructor(
-        @inject(WorkspaceCliContribution) protected readonly cliParams: WorkspaceCliContribution
-    ) {
+    @inject(WorkspaceCliContribution)
+    protected readonly cliParams: WorkspaceCliContribution;
+
+    @postConstruct()
+    protected async init(): Promise<void> {
         this.root = this.getRootURIFromCli();
-        this.root.then(async root => {
-            if (!root) {
-                const data = await this.readFromUserHome();
-                if (data && data.recentRoots) {
-                    this.root = Promise.resolve(data.recentRoots[0]);
-                }
+        if (!await this.root) {
+            const data = await this.readFromUserHome();
+            if (data && data.recentRoots) {
+                this.root = Promise.resolve(data.recentRoots[0]);
             }
-        });
+        }
     }
 
     getRoot(): Promise<string | undefined> {
