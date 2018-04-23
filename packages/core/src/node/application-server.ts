@@ -8,13 +8,27 @@
 import { injectable } from 'inversify';
 import { ApplicationServer, ExtensionInfo, ApplicationInfo } from '../common/application-protocol';
 import { ApplicationPackage } from '@theia/application-package';
+import { CliContribution } from '.';
+import * as yargs from 'yargs';
 
 @injectable()
-export class ApplicationServerImpl implements ApplicationServer {
+export class ApplicationServerImpl implements ApplicationServer, CliContribution {
 
+    protected applicationId: string;
     protected readonly applicationPackage: ApplicationPackage;
     constructor() {
         this.applicationPackage = new ApplicationPackage({ projectPath: process.cwd() });
+    }
+
+    configure(conf: yargs.Argv) {
+        conf.option('--id', {
+            description: 'Application identifier in case multiple theias are behind a proxy.\
+            This allow the web-browser local storage to find the correct data back.', type: 'string'
+        });
+    }
+
+    setArguments(args: yargs.Arguments) {
+        this.applicationId = args.id;
     }
 
     getExtensionsInfos(): Promise<ExtensionInfo[]> {
@@ -32,6 +46,10 @@ export class ApplicationServerImpl implements ApplicationServer {
             return Promise.resolve({ name, version });
         }
         return Promise.resolve(undefined);
+    }
+
+    getApplicationId(): Promise<string | undefined> {
+        return Promise.resolve(this.applicationId);
     }
 
 }

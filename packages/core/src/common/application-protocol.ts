@@ -12,6 +12,7 @@ export const ApplicationServer = Symbol('ApplicationServer');
 export interface ApplicationServer {
     getExtensionsInfos(): Promise<ExtensionInfo[]>;
     getApplicationInfo(): Promise<ApplicationInfo | undefined>;
+    getApplicationId(): Promise<string | undefined>;
 }
 
 export interface ExtensionInfo {

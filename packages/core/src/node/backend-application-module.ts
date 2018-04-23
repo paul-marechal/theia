@@ -45,6 +45,7 @@ export const backendApplicationModule = new ContainerModule(bind => {
 
     bind(ApplicationServerImpl).toSelf().inSingletonScope();
     bind(ApplicationServer).toService(ApplicationServerImpl);
+    bind(CliContribution).toService(ApplicationServerImpl);
     bind(ConnectionHandler).toDynamicValue(ctx =>
         new JsonRpcConnectionHandler(applicationPath, () =>
             ctx.container.get(ApplicationServer)

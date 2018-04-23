@@ -5,13 +5,13 @@
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-import { StorageService } from '@theia/core/lib/browser/storage-service';
+import { StorageService, LocalStorageService } from '@theia/core/lib/browser/storage-service';
 import { WorkspaceService } from './workspace-service';
 import { inject, injectable, postConstruct } from 'inversify';
 import { ILogger } from '@theia/core/lib/common';
-import { LocalStorageService } from '@theia/core/lib/browser/storage-service';
 import URI from '@theia/core/lib/common/uri';
 import { Deferred } from '@theia/core/lib/common/promise-util';
+import { ApplicationServer } from '@theia/core/lib/common/application-protocol';
 
 /*
  * Prefixes any stored data with the current workspace path.
@@ -20,25 +20,25 @@ import { Deferred } from '@theia/core/lib/common/promise-util';
 export class WorkspaceStorageService implements StorageService {
 
     private prefix: string;
-    protected initialized: Deferred<void>;
-    protected storageService: StorageService;
 
     @inject(WorkspaceService)
     protected workspaceService: WorkspaceService;
 
-    @inject(ILogger)
-    protected logger: ILogger;
+    protected storageService: LocalStorageService;
+    protected initialized = new Deferred<void>();
 
-    constructor() {
-        this.storageService = new LocalStorageService(this.logger);
-        this.initialized = new Deferred<void>();
+    constructor(
+        @inject(ILogger) protected logger: ILogger,
+        @inject(ApplicationServer) protected applicationServer: ApplicationServer,
+    ) {
+        this.storageService = new LocalStorageService(logger, applicationServer);
+        this.storageService.init();
     }
 
     @postConstruct()
     protected async init(): Promise<void> {
         const statFile = await this.workspaceService.root;
-        const workspace = statFile ? new URI(statFile.uri).path : '_global_';
-        this.prefix = `${window.location.pathname}:${workspace}`;
+        this.prefix = statFile ? new URI(statFile.uri).path.toString() : '_global_';
         this.initialized.resolve();
     }
 

@@ -5,7 +5,9 @@
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-import { inject, injectable } from 'inversify';
+import { inject, injectable, postConstruct } from 'inversify';
+import { ApplicationServer } from '../common/application-protocol';
+import { Deferred } from '../common/promise-util';
 import { ILogger } from '../common/logger';
 
 export const StorageService = Symbol('IStorageService');
@@ -33,9 +35,17 @@ interface LocalStorage {
 
 @injectable()
 export class LocalStorageService implements StorageService {
+
     private storage: LocalStorage;
 
-    constructor( @inject(ILogger) protected logger: ILogger) {
+    protected initialized: Deferred<void>;
+    protected applicationId: string | undefined;
+
+    constructor(
+        @inject(ILogger) protected logger: ILogger,
+        @inject(ApplicationServer) protected readonly applicationServer: ApplicationServer,
+    ) {
+        this.initialized = new Deferred<void>();
         if (typeof window !== 'undefined' && window.localStorage) {
             this.storage = window.localStorage;
         } else {
@@ -44,7 +54,14 @@ export class LocalStorageService implements StorageService {
         }
     }
 
-    setData<T>(key: string, data?: T): Promise<void> {
+    @postConstruct()
+    async init(): Promise<void> {
+        this.applicationId = await this.applicationServer.getApplicationId();
+        this.initialized.resolve();
+    }
+
+    async setData<T>(key: string, data?: T): Promise<void> {
+        if (!this.applicationId) { await this.initialized.promise; }
         if (data !== undefined) {
             this.storage[this.prefix(key)] = JSON.stringify(data);
         } else {
@@ -53,7 +70,8 @@ export class LocalStorageService implements StorageService {
         return Promise.resolve();
     }
 
-    getData<T>(key: string, defaultValue?: T): Promise<T | undefined> {
+    async getData<T>(key: string, defaultValue?: T): Promise<T | undefined> {
+        if (!this.applicationId) { await this.initialized.promise; }
         const result = this.storage[this.prefix(key)];
         if (result === undefined) {
             return Promise.resolve(defaultValue);
@@ -62,6 +80,6 @@ export class LocalStorageService implements StorageService {
     }
 
     protected prefix(key: string): string {
-        return 'theia:' + key;
+        return `theia:${this.applicationId ? this.applicationId : window.location.pathname}:${key}`;
     }
 }
