@@ -179,7 +179,7 @@ export class KeyCode {
             this.ctrl = parts.some(part => part === KeyModifier.MacCtrl);
         } else {
             this.meta = false;
-            this.ctrl = parts.some(part => part === KeyModifier.CtrlCmd);
+            this.ctrl = parts.some(part => part === KeyModifier.CtrlCmd || part === KeyModifier.MacCtrl);
             this.shift = parts.some(part => part === KeyModifier.Shift);
             this.alt = parts.some(part => part === KeyModifier.Alt);
         }
