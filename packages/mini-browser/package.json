@@ -16,6 +16,10 @@
     {
       "backend": "lib/node/mini-browser-backend-module",
       "frontend": "lib/browser/mini-browser-frontend-module"
+    },
+    {
+      "frontendElectron": "lib/electron-browser/mini-browser-electron-browser-module",
+      "backendElectron": "lib/electron-node/mini-browser-electron-node-module"
     }
   ],
   "keywords": [
@@ -43,6 +47,9 @@
   },
   "devDependencies": {
     "@theia/ext-scripts": "^0.11.0"
+  },
+  "optionalDependencies": {
+    "@theia/electron": "<1"
   },
   "nyc": {
     "extends": "../../configs/nyc.json"

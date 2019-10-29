@@ -27,13 +27,15 @@ export class BackendGenerator extends AbstractGenerator {
     protected compileServer(backendModules: Map<string, string>): string {
         return `// @ts-check
 require('reflect-metadata');
+const fs = require('fs-extra');
 const path = require('path');
 const express = require('express');
 const { Container } = require('inversify');
 const { BackendApplication, CliManager } = require('@theia/core/lib/node');
 const { backendApplicationModule } = require('@theia/core/lib/node/backend-application-module');
 const { messagingBackendModule } = require('@theia/core/lib/node/messaging/messaging-backend-module');
-const { loggerBackendModule } = require('@theia/core/lib/node/logger-backend-module');
+const { loggerBackendModule } = require('@theia/core/lib/node/logger-backend-module');${this.ifElectron(`
+const { CSToken } = require('@theia/electron/electron-token')`)}
 
 const container = new Container();
 container.load(backendApplicationModule);
@@ -46,7 +48,13 @@ function load(raw) {
     )
 }
 
-function start(port, host, argv) {
+async function start(port, host, argv) {${this.ifElectron(`
+    container.bind(CSToken).toConstantValue(await fs.readFile(path.resolve(__dirname, '../../secure/cst.txt'))
+        .catch(error => {
+            console.error(error);
+            return null;
+        }));`)}
+
     if (argv === undefined) {
         argv = process.argv;
     }

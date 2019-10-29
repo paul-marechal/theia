@@ -72,7 +72,8 @@ const { frontendApplicationModule } = require('@theia/core/lib/browser/frontend-
 const { messagingFrontendModule } = require('@theia/core/lib/browser/messaging/messaging-frontend-module');
 const { loggerFrontendModule } = require('@theia/core/lib/browser/logger-frontend-module');
 const { ThemeService } = require('@theia/core/lib/browser/theming');
-const { FrontendApplicationConfigProvider } = require('@theia/core/lib/browser/frontend-application-config-provider');
+const { FrontendApplicationConfigProvider } = require('@theia/core/lib/browser/frontend-application-config-provider');${this.ifElectron(`
+const { CSToken } = require('@theia/electron/electron-token')`)}
 
 FrontendApplicationConfigProvider.set(${this.prettyStringify(this.pck.props.frontend.config)});
 
@@ -87,7 +88,12 @@ function load(raw) {
     )
 }
 
-function start() {
+async function start() {${this.ifElectron(`
+    container.bind(CSToken).toConstantValue(await fetch('../secure/cst.txt')
+        .then(response => response.text(), error => {
+            console.error(error);
+            return null;
+        }));`)}
     const themeService = ThemeService.get();
     themeService.loadUserTheme();
 
@@ -140,13 +146,19 @@ const nativeKeymap = require('native-keymap');
 const Storage = require('electron-store');
 const electronStore = new Storage();
 
-app.on('ready', () => {
+const { generateCSToken } = require('@theia/electron/electron-token');
+const cstPromise = generateCSToken(resolve(__dirname, '../../secure/cst.txt'));
+
+app.on('ready', async () => {
     const { screen } = electron;
 
     // Remove the default electron menus, waiting for the application to set its own.
     Menu.setApplicationMenu(Menu.buildFromTemplate([{
         role: 'help', submenu: [{ role: 'toggledevtools'}]
     }]));
+
+    // Wait for token to be fully generated before opening windows.
+    await cstPromise;
 
     function createNewWindow(theUrl) {
 

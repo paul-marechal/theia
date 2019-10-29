@@ -132,6 +132,10 @@ export class FileLocationMapper implements LocationMapper {
     }
 
     map(location: string): MaybePromise<string> {
+        return this.getEndpoint(location).toString(/* skipEncoding: */ true);
+    }
+
+    protected getEndpoint(location: string): URI {
         const uri = new URI(location);
         if (uri.scheme !== 'file') {
             throw new Error(`Only URIs with 'file' scheme can be mapped to an URL. URI was: ${uri}.`);
@@ -140,7 +144,7 @@ export class FileLocationMapper implements LocationMapper {
         if (rawLocation.charAt(0) === '/') {
             rawLocation = rawLocation.substr(1);
         }
-        return new MiniBrowserEndpoint().getRestUrl().resolve(rawLocation).toString();
+        return new MiniBrowserEndpoint().getRestUrl().resolve(rawLocation);
     }
 
 }
