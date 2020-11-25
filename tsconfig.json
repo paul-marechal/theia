@@ -172,8 +172,13 @@
       "@theia/timeline/*": [
         "packages/timeline/*"
       ],
+<<<<<<< HEAD
       "@theia/property-view/lib/*": [
         "packages/property-view/src/*"
+=======
+      "@theia/terminal-external/lib/*": [
+        "packages/terminal-external/src/*"
+>>>>>>> Initial contribution of external terminal
       ]
     }
   }
