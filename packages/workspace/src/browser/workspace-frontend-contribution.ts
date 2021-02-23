@@ -15,11 +15,11 @@
  ********************************************************************************/
 
 import { injectable, inject } from 'inversify';
-import { CommandContribution, CommandRegistry, MenuContribution, MenuModelRegistry, SelectionService } from '@theia/core/lib/common';
+import { CommandContribution, CommandRegistry, MenuContribution, MenuModelRegistry, SelectionService, MessageService } from '@theia/core/lib/common';
 import { isOSX, environment, OS } from '@theia/core';
 import {
     open, OpenerService, CommonMenus, StorageService, LabelProvider,
-    ConfirmDialog, KeybindingRegistry, KeybindingContribution, CommonCommands, FrontendApplicationContribution
+    ConfirmDialog, KeybindingRegistry, KeybindingContribution, CommonCommands, FrontendApplicationContribution, ApplicationShell, Saveable
 } from '@theia/core/lib/browser';
 import { FileDialogService, OpenFileDialogProps, FileDialogTreeFilters } from '@theia/filesystem/lib/browser';
 import { ContextKeyService } from '@theia/core/lib/browser/context-key-service';
@@ -55,6 +55,8 @@ export type WorkspaceState = keyof typeof WorkspaceStates;
 @injectable()
 export class WorkspaceFrontendContribution implements CommandContribution, KeybindingContribution, MenuContribution, FrontendApplicationContribution {
 
+    @inject(ApplicationShell) protected readonly applicationShell: ApplicationShell;
+    @inject(MessageService) protected readonly messageService: MessageService;
     @inject(FileService) protected readonly fileService: FileService;
     @inject(OpenerService) protected readonly openerService: OpenerService;
     @inject(WorkspaceService) protected readonly workspaceService: WorkspaceService;
@@ -151,6 +153,7 @@ export class WorkspaceFrontendContribution implements CommandContribution, Keybi
         });
         commands.registerCommand(WorkspaceCommands.SAVE_AS,
             UriAwareCommandHandler.MonoSelect(this.selectionService, {
+                isEnabled: () => Saveable.isSource(this.applicationShell.currentWidget),
                 execute: (uri: URI) => this.saveAs(uri),
             }));
     }
@@ -418,11 +421,33 @@ export class WorkspaceFrontendContribution implements CommandContribution, Keybi
         } while (selected && exist && !overwrite);
         if (selected) {
             try {
-                await this.commandRegistry.executeCommand(CommonCommands.SAVE.id);
-                await this.fileService.copy(uri, selected, { overwrite });
+                await this.copySave(uri, selected, overwrite);
             } catch (e) {
                 console.warn(e);
             }
+        }
+    }
+
+    private async copySave(source: URI, selected: URI, overwrite: boolean): Promise<void> {
+        const sourceWidget = this.applicationShell.currentWidget;
+        const sourceSaveable = Saveable.get(sourceWidget);
+        if (sourceWidget && sourceSaveable && sourceSaveable.createSnapshot && sourceSaveable.revert) {
+            const snapshot = sourceSaveable.createSnapshot();
+            if (!await this.fileService.exists(selected)) {
+                await this.fileService.copy(source, selected, { overwrite });
+            }
+            const openedWidget = await open(this.openerService, selected);
+            const newSaveable = Saveable.get(openedWidget);
+            if (openedWidget && newSaveable && newSaveable.applySnapshot) {
+                newSaveable.applySnapshot(snapshot);
+                await sourceSaveable.revert();
+                sourceWidget.close();
+                await this.commandRegistry.executeCommand(CommonCommands.SAVE.id);
+            } else {
+                this.messageService.error('Could not apply changes to new file');
+            }
+        } else {
+            this.messageService.error('The selected file is not a valid target for this command');
         }
     }
 
