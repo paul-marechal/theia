@@ -17,7 +17,6 @@
 import { ContainerModule, interfaces } from 'inversify';
 import { CommandContribution } from '@theia/core/lib/common';
 import {
-    FrontendApplicationContribution,
     KeybindingContribution,
     WebSocketConnectionProvider
 } from '@theia/core/lib/browser';
@@ -28,13 +27,11 @@ import { TerminalExternalService, terminalExternalServicePath } from '../common/
 export default new ContainerModule((bind: interfaces.Bind) => {
     bind(TerminalExternalFrontendContribution).toSelf().inSingletonScope();
 
-    bind(FrontendApplicationContribution).toService(TerminalExternalFrontendContribution);
+    bindTerminalExternalPreferences(bind);
 
     [CommandContribution, KeybindingContribution].forEach(serviceIdentifier =>
         bind(serviceIdentifier).toService(TerminalExternalFrontendContribution)
     );
-
-    bindTerminalExternalPreferences(bind);
 
     bind(TerminalExternalService).toDynamicValue(ctx =>
         WebSocketConnectionProvider.createProxy<TerminalExternalService>(ctx.container, terminalExternalServicePath)
