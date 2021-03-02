@@ -136,6 +136,9 @@
       "@theia/terminal/lib/*": [
         "packages/terminal/src/*"
       ],
+      "@theia/terminal-external/lib/*": [
+        "packages/terminal-external/src/*"
+      ],
       "@theia/typehierarchy/lib/*": [
         "packages/typehierarchy/src/*"
       ],
@@ -172,13 +175,8 @@
       "@theia/timeline/*": [
         "packages/timeline/*"
       ],
-<<<<<<< HEAD
       "@theia/property-view/lib/*": [
         "packages/property-view/src/*"
-=======
-      "@theia/terminal-external/lib/*": [
-        "packages/terminal-external/src/*"
->>>>>>> Initial contribution of external terminal
       ]
     }
   }
