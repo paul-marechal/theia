@@ -14,64 +14,53 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-import { inject, injectable, interfaces } from 'inversify';
+import { inject, injectable, interfaces, postConstruct } from 'inversify';
 import {
-    FrontendApplicationContribution,
     PreferenceSchema,
-    PreferenceService
+    PreferenceService,
+    createPreferenceProxy,
+    PreferenceProxy,
+    FrontendApplicationContribution
 } from '@theia/core/lib/browser';
 import { PreferenceSchemaProvider } from '@theia/core/lib/browser/preferences/preference-contribution';
 import { isWindows, isOSX } from '@theia/core/lib/common/os';
 import { TerminalExternalService, TerminalExternalConfiguration } from '../common/terminal-external';
 
 export const TerminalExternalPreferences = Symbol('TerminalExternalPreferences');
+export type TerminalExternalPreferences = PreferenceProxy<TerminalExternalConfiguration>;
+
+export const TerminalExternalSchemaPromise = Symbol('TerminalExternalSchemaPromise');
+export type TerminalExternalSchemaPromise = Promise<PreferenceSchema>;
 
 export function bindTerminalExternalPreferences(bind: interfaces.Bind): void {
+    bind(TerminalExternalSchemaPromise).toDynamicValue(
+        ctx => getTerminalExternalSchema(ctx.container.get(TerminalExternalService))
+    ).inSingletonScope();
+    bind(TerminalExternalPreferences).toDynamicValue(
+        ctx => createPreferenceProxy(
+            ctx.container.get(PreferenceService),
+            ctx.container.get(TerminalExternalSchemaPromise),
+        )
+    ).inSingletonScope();
     bind(TerminalExternalPreferenceService).toSelf().inSingletonScope();
-    bind(FrontendApplicationContribution).to(TerminalExternalPreferenceService).inSingletonScope();
+    bind(FrontendApplicationContribution).toService(TerminalExternalPreferenceService);
 }
 
 @injectable()
-export class TerminalExternalPreferenceService implements FrontendApplicationContribution {
+export class TerminalExternalPreferenceService {
+
+    @inject(TerminalExternalPreferences)
+    private readonly preferences: TerminalExternalPreferences;
 
     @inject(PreferenceSchemaProvider)
     private readonly preferenceSchemaProvider: PreferenceSchemaProvider;
 
-    @inject(PreferenceService)
-    private readonly preferences: PreferenceService;
+    @inject(TerminalExternalSchemaPromise)
+    private readonly promisedSchema: TerminalExternalSchemaPromise;
 
-    @inject(TerminalExternalService)
-    private readonly terminalExternalService: TerminalExternalService;
-
-    async initialize(): Promise<void> {
-        this.getConfigSchema().then(schema => this.preferenceSchemaProvider.setSchema(schema));
-
-    }
-
-    async getConfigSchema(): Promise<PreferenceSchema> {
-        console.error('getting schema again');
-        const hostExec = await this.terminalExternalService.getDefaultExec();
-        const schema: PreferenceSchema = {
-            type: 'object',
-            properties: {
-                'terminal.external.windowsExec': {
-                    type: 'string',
-                    description: 'Customizes which terminal to run on Windows.',
-                    default: `${isWindows ? hostExec : 'C:\\WINDOWS\\System32\\cmd.exe'}`
-                },
-                'terminal.external.osxExec': {
-                    type: 'string',
-                    description: 'Customizes which terminal application to run on macOS.',
-                    default: `${isOSX ? hostExec : 'Terminal.app'}`
-                },
-                'terminal.external.linuxExec': {
-                    type: 'string',
-                    description: 'Customizes which terminal to run on Linux.',
-                    default: `${!(isWindows || isOSX) ? hostExec : 'xterm'}`
-                }
-            }
-        };
-        return schema;
+    @postConstruct()
+    protected postConstruct(): void {
+        this.promisedSchema.then(schema => this.preferenceSchemaProvider.setSchema(schema));
     }
 
     /**
@@ -79,9 +68,37 @@ export class TerminalExternalPreferenceService implements FrontendApplicationCon
      */
     getTerminalExternalConfiguration(): TerminalExternalConfiguration {
         return {
-            'terminal.external.linuxExec': <string>this.preferences.get('terminal.external.linuxExec'),
-            'terminal.external.osxExec': <string>this.preferences.get('terminal.external.osxExec'),
-            'terminal.external.windowsExec': <string>this.preferences.get('terminal.external.windowsExec')
+            'terminal.external.linuxExec': this.preferences['terminal.external.linuxExec'],
+            'terminal.external.osxExec': this.preferences['terminal.external.osxExec'],
+            'terminal.external.windowsExec': this.preferences['terminal.external.windowsExec'],
         };
     }
+}
+
+/**
+ * Some of the schema's properties are fetched from the backend.
+ */
+export async function getTerminalExternalSchema(terminalExternalService: TerminalExternalService): Promise<PreferenceSchema> {
+    console.error('getting schema again');
+    const hostExec = await terminalExternalService.getDefaultExec();
+    return {
+        type: 'object',
+        properties: {
+            'terminal.external.windowsExec': {
+                type: 'string',
+                description: 'Customizes which terminal to run on Windows.',
+                default: `${isWindows ? hostExec : 'C:\\WINDOWS\\System32\\cmd.exe'}`
+            },
+            'terminal.external.osxExec': {
+                type: 'string',
+                description: 'Customizes which terminal application to run on macOS.',
+                default: `${isOSX ? hostExec : 'Terminal.app'}`
+            },
+            'terminal.external.linuxExec': {
+                type: 'string',
+                description: 'Customizes which terminal to run on Linux.',
+                default: `${!(isWindows || isOSX) ? hostExec : 'xterm'}`
+            }
+        }
+    };
 }
