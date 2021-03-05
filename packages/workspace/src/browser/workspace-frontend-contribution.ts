@@ -19,7 +19,7 @@ import { CommandContribution, CommandRegistry, MenuContribution, MenuModelRegist
 import { isOSX, environment, OS } from '@theia/core';
 import {
     open, OpenerService, CommonMenus, StorageService, LabelProvider,
-    ConfirmDialog, KeybindingRegistry, KeybindingContribution, CommonCommands, FrontendApplicationContribution, ApplicationShell, Saveable
+    ConfirmDialog, KeybindingRegistry, KeybindingContribution, CommonCommands, FrontendApplicationContribution, ApplicationShell, Saveable, SaveableSource, Widget, Navigatable
 } from '@theia/core/lib/browser';
 import { FileDialogService, OpenFileDialogProps, FileDialogTreeFilters } from '@theia/filesystem/lib/browser';
 import { ContextKeyService } from '@theia/core/lib/browser/context-key-service';
@@ -29,7 +29,6 @@ import { WorkspaceCommands } from './workspace-commands';
 import { QuickOpenWorkspace } from './quick-open-workspace';
 import { WorkspacePreferences } from './workspace-preferences';
 import URI from '@theia/core/lib/common/uri';
-import { UriAwareCommandHandler } from '@theia/core/lib/common/uri-command-handler';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { EncodingRegistry } from '@theia/core/lib/browser/encoding-registry';
 import { UTF8 } from '@theia/core/lib/common/encodings';
@@ -151,11 +150,19 @@ export class WorkspaceFrontendContribution implements CommandContribution, Keybi
             isEnabled: () => this.workspaceService.isMultiRootWorkspaceEnabled,
             execute: () => this.saveWorkspaceAs()
         });
-        commands.registerCommand(WorkspaceCommands.SAVE_AS,
-            UriAwareCommandHandler.MonoSelect(this.selectionService, {
-                isEnabled: () => Saveable.isSource(this.applicationShell.currentWidget),
-                execute: (uri: URI) => this.saveAs(uri),
-            }));
+        commands.registerCommand(WorkspaceCommands.SAVE_AS, {
+            isEnabled: () => this.canBeSavedAs(this.applicationShell.currentWidget),
+            execute: () => {
+                const { currentWidget } = this.applicationShell;
+                // No clue what could have happened between `isEnabled` and `execute`
+                // when fetching currentWidget, so better to double-check:
+                if (this.canBeSavedAs(currentWidget)) {
+                    this.saveAs(currentWidget);
+                } else {
+                    this.messageService.error(`Cannot run "${WorkspaceCommands.SAVE_AS.label}" for the current widget.`);
+                }
+            },
+        });
     }
 
     registerMenus(menus: MenuModelRegistry): void {
@@ -396,14 +403,28 @@ export class WorkspaceFrontendContribution implements CommandContribution, Keybi
     }
 
     /**
-     * Save source `URI` to target.
-     *
-     * @param uri the source `URI`.
+     * This method ensures a few things about `widget`:
+     * - `widget.getResourceUri()` actually returns a URI.
+     * - `widget.saveable.createSnapshot` is defined.
+     * - `widget.saveable.revert` is defined.
      */
-    protected async saveAs(uri: URI): Promise<void> {
+    protected canBeSavedAs(widget: Widget | undefined): widget is Widget & SaveableSource & Navigatable {
+        return widget !== undefined
+            && Saveable.isSource(widget)
+            && typeof widget.saveable.createSnapshot === 'function'
+            && typeof widget.saveable.revert === 'function'
+            && Navigatable.is(widget)
+            && widget.getResourceUri() !== undefined;
+    }
+
+    /**
+     * Save `sourceWidget` to a new file picked by the user.
+     */
+    protected async saveAs(sourceWidget: Widget & SaveableSource & Navigatable): Promise<void> {
         let exist: boolean = false;
         let overwrite: boolean = false;
         let selected: URI | undefined;
+        const uri = sourceWidget.getResourceUri()!;
         const stat = await this.fileService.resolve(uri);
         do {
             selected = await this.fileDialogService.showSaveDialog(
@@ -421,33 +442,33 @@ export class WorkspaceFrontendContribution implements CommandContribution, Keybi
         } while (selected && exist && !overwrite);
         if (selected) {
             try {
-                await this.copySave(uri, selected, overwrite);
+                await this.copyAndSave(sourceWidget, selected, overwrite);
             } catch (e) {
                 console.warn(e);
             }
         }
     }
 
-    private async copySave(source: URI, selected: URI, overwrite: boolean): Promise<void> {
-        const sourceWidget = this.applicationShell.currentWidget;
-        const sourceSaveable = Saveable.get(sourceWidget);
-        if (sourceWidget && sourceSaveable && sourceSaveable.createSnapshot && sourceSaveable.revert) {
-            const snapshot = sourceSaveable.createSnapshot();
-            if (!await this.fileService.exists(selected)) {
-                await this.fileService.copy(source, selected, { overwrite });
-            }
-            const openedWidget = await open(this.openerService, selected);
-            const newSaveable = Saveable.get(openedWidget);
-            if (openedWidget && newSaveable && newSaveable.applySnapshot) {
-                newSaveable.applySnapshot(snapshot);
-                await sourceSaveable.revert();
-                sourceWidget.close();
-                await this.commandRegistry.executeCommand(CommonCommands.SAVE.id);
-            } else {
-                this.messageService.error('Could not apply changes to new file');
-            }
+    /**
+     * @param sourceWidget widget to save as `target`.
+     * @param target The new URI for the widget.
+     * @param overwrite
+     */
+    private async copyAndSave(sourceWidget: Widget & SaveableSource & Navigatable, target: URI, overwrite: boolean): Promise<void> {
+        const snapshot = sourceWidget.saveable.createSnapshot!();
+        if (!await this.fileService.exists(target)) {
+            await this.fileService.copy(sourceWidget.getResourceUri()!, target, { overwrite });
+        }
+        const targetWidget = await open(this.openerService, target);
+        const targetSaveable = Saveable.get(targetWidget);
+        if (targetWidget && targetSaveable && targetSaveable.applySnapshot) {
+            targetSaveable.applySnapshot(snapshot);
+            await sourceWidget.saveable.revert!();
+            sourceWidget.close();
+            // At this point `targetWidget` should be `applicationShell.currentWidget` for the save command to pick up:
+            await this.commandRegistry.executeCommand(CommonCommands.SAVE.id);
         } else {
-            this.messageService.error('The selected file is not a valid target for this command');
+            this.messageService.error('Could not apply changes to new file');
         }
     }
 
