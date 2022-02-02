@@ -120,6 +120,8 @@ import {
 import { RendererHost } from './widgets';
 import { TooltipService, TooltipServiceImpl } from './tooltip-service';
 import { bindFrontendStopwatch, bindBackendStopwatch } from './performance';
+import { JsonRpcProxyProvider } from 'src/common/messaging/json-rpc-proxy-provider';
+import { dynamicProxy } from 'src/common/messaging/proxy-provider';
 
 export { bindResourceProvider, bindMessageService, bindPreferenceService };
 
@@ -232,9 +234,9 @@ export const frontendApplicationModule = new ContainerModule((bind, unbind, isBo
     bindContributionProvider(bind, KeybindingContext);
     bindContributionProvider(bind, KeybindingContribution);
 
-    bindMessageService(bind).onActivation(({ container }, messages) => {
-        const client = container.get(MessageClient);
-        WebSocketConnectionProvider.createProxy(container, messageServicePath, client);
+    bindMessageService(bind).onActivation((ctx, messages) => {
+        const client = ctx.container.get(MessageClient);
+        WebSocketConnectionProvider.createProxy(ctx.container, messageServicePath, client);
         return messages;
     });
 
@@ -259,8 +261,9 @@ export const frontendApplicationModule = new ContainerModule((bind, unbind, isBo
     bind(QuickHelpService).toSelf().inSingletonScope();
     bind(QuickAccessContribution).toService(QuickHelpService);
 
-    bind(QuickPickService).to(QuickPickServiceImpl).inSingletonScope().onActivation(({ container }, quickPickService: QuickPickService) => {
-        WebSocketConnectionProvider.createProxy(container, quickPickServicePath, quickPickService);
+    bind(QuickPickService).to(QuickPickServiceImpl).inSingletonScope().onActivation((ctx, quickPickService: QuickPickService) => {
+        ctx.container.get(JsonRpcProxyProvider).getProxyById(quickPickServicePath); // TODO: Respond to incoming messages
+        // WebSocketConnectionProvider.createProxy(ctx.container, quickPickServicePath, quickPickService);
         return quickPickService;
     });
 
@@ -309,18 +312,16 @@ export const frontendApplicationModule = new ContainerModule((bind, unbind, isBo
     bind(ApplicationConnectionStatusContribution).toSelf().inSingletonScope();
     bind(FrontendApplicationContribution).toService(ApplicationConnectionStatusContribution);
 
-    bind(ApplicationServer).toDynamicValue(ctx => {
-        const provider = ctx.container.get(WebSocketConnectionProvider);
-        return provider.createProxy<ApplicationServer>(applicationPath);
-    }).inSingletonScope();
+    bind(ApplicationServer)
+        .toDynamicValue(dynamicProxy(ApplicationServer, applicationPath))
+        .inSingletonScope();
 
     bind(AboutDialog).toSelf().inSingletonScope();
     bind(AboutDialogProps).toConstantValue({ title: 'Theia' });
 
-    bind(EnvVariablesServer).toDynamicValue(ctx => {
-        const connection = ctx.container.get(WebSocketConnectionProvider);
-        return connection.createProxy<EnvVariablesServer>(envVariablesPath);
-    }).inSingletonScope();
+    bind(EnvVariablesServer)
+        .toDynamicValue(dynamicProxy(JsonRpcProxyProvider, envVariablesPath))
+        .inSingletonScope();
 
     bind(ThemeService).toDynamicValue(() => ThemeService.get());
 
@@ -361,10 +362,9 @@ export const frontendApplicationModule = new ContainerModule((bind, unbind, isBo
     bind(AuthenticationService).to(AuthenticationServiceImpl).inSingletonScope();
     bind(DecorationsService).to(DecorationsServiceImpl).inSingletonScope();
 
-    bind(KeytarService).toDynamicValue(ctx => {
-        const connection = ctx.container.get(WebSocketConnectionProvider);
-        return connection.createProxy<KeytarService>(keytarServicePath);
-    }).inSingletonScope();
+    bind(KeytarService)
+        .toDynamicValue(dynamicProxy(JsonRpcProxyProvider, keytarServicePath))
+        .inSingletonScope();
 
     bind(CredentialsService).to(CredentialsServiceImpl);
 

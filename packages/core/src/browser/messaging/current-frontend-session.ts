@@ -1,5 +1,5 @@
 /********************************************************************************
- * Copyright (C) 2017 TypeFox and others.
+ * Copyright (C) 2022 Ericsson and others.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v. 2.0 which is available at
@@ -14,13 +14,16 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 
-import { ContainerModule } from 'inversify';
-import { ConnectionProvider } from '../../common/messaging/connection';
-import { SocketIoConnectionProvider } from './socket-io-connection-provider';
-import { DefaultCurrentFrontendSession, CurrentFrontendSession } from './current-frontend-session';
+import { injectable } from 'inversify';
+import * as uuid from 'uuid';
 
-export const messagingFrontendModule = new ContainerModule(bind => {
-    bind(CurrentFrontendSession).to(DefaultCurrentFrontendSession).inSingletonScope();
-    bind(SocketIoConnectionProvider).toSelf().inSingletonScope();
-    bind(ConnectionProvider).toService(SocketIoConnectionProvider);
-});
+export const CurrentFrontendSession = Symbol('FrontendFrontendSession');
+export interface CurrentFrontendSession {
+    readonly sessionId: string
+}
+
+@injectable()
+export class DefaultCurrentFrontendSession implements CurrentFrontendSession {
+
+    sessionId = uuid.v4();
+}

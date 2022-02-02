@@ -72,11 +72,13 @@ export namespace Bindable {
             // In InversifyJS `4.14.0` containers no longer have a property `guid`.
             && ('guid' in arg || 'parent' in arg);
     }
+    export function getBindFunction(bindable: Bindable): interfaces.Bind {
+        return typeof bindable === 'function' ? bindable.bind(bindable) : bindable.bind.bind(bindable);
+    }
 }
 
 export function bindContributionProvider(bindable: Bindable, id: symbol): void {
-    const bindingToSyntax = (Bindable.isContainer(bindable) ? bindable.bind(ContributionProvider) : bindable(ContributionProvider));
-    bindingToSyntax
+    Bindable.getBindFunction(bindable)(ContributionProvider)
         .toDynamicValue(ctx => new ContainerBasedContributionProvider(id, ctx.container))
         .inSingletonScope().whenTargetNamed(id);
 }
@@ -89,7 +91,7 @@ export function bindContributionProvider(bindable: Bindable, id: symbol): void {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function bindContribution(bindable: Bindable, service: interfaces.ServiceIdentifier<any>, contributions: interfaces.ServiceIdentifier<any>[]): void {
-    const bind: interfaces.Bind = Bindable.isContainer(bindable) ? bindable.bind.bind(bindable) : bindable;
+    const bind = Bindable.getBindFunction(bindable);
     for (const contribution of contributions) {
         bind(contribution).toService(service);
     }

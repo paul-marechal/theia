@@ -56,6 +56,14 @@ export namespace Event {
             maxListeners: 0,
         });
     }
+
+    export function listenOnce<T>(event: Event<T>, listener: (e: T) => any, thisArgs?: any, disposables?: Disposable[]): Disposable {
+        const disposable = event(e => {
+            disposable.dispose();
+            listener(e);
+        }, thisArgs, disposables);
+        return disposable;
+    }
 }
 
 type Callback = (...args: any[]) => any;

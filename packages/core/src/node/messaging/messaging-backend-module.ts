@@ -15,23 +15,18 @@
  ********************************************************************************/
 
 import { ContainerModule } from 'inversify';
-import { bindContributionProvider } from '../../common';
 import { BackendApplicationContribution } from '../backend-application';
-import { MessagingContribution, MessagingContainer } from './messaging-contribution';
+import { bindContributionProvider, ConnectionHandler } from '../../common';
 import { ConnectionContainerModule } from './connection-container-module';
-import { MessagingService } from './messaging-service';
-import { MessagingListener, MessagingListenerContribution } from './messaging-listeners';
+import { ConnectionRouter, DefaultConnectionRouter } from './connection-router';
+import { ChildContainerFactory } from './frontend-session';
+import { SocketIoServer } from '../socket-io-server';
 
 export const messagingBackendModule = new ContainerModule(bind => {
     bindContributionProvider(bind, ConnectionContainerModule);
-    bindContributionProvider(bind, MessagingService.Contribution);
-    bind(MessagingService.Identifier).to(MessagingContribution).inSingletonScope();
-    bind(MessagingContribution).toDynamicValue(({ container }) => {
-        const child = container.createChild();
-        child.bind(MessagingContainer).toConstantValue(container);
-        return child.get(MessagingService.Identifier);
-    }).inSingletonScope();
-    bind(BackendApplicationContribution).toService(MessagingContribution);
-    bind(MessagingListener).toSelf().inSingletonScope();
-    bindContributionProvider(bind, MessagingListenerContribution);
+    bindContributionProvider(bind, ConnectionHandler);
+    bind(ChildContainerFactory).toFactory(ctx => () => ctx.container.createChild());
+    bind(DefaultConnectionRouter).toSelf().inSingletonScope();
+    bind(ConnectionRouter).toService(DefaultConnectionRouter);
+    bind(BackendApplicationContribution).to(SocketIoServer);
 });

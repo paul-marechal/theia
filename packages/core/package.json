@@ -63,9 +63,10 @@
     "reflect-metadata": "^0.1.10",
     "route-parser": "^0.0.5",
     "safer-buffer": "^2.1.2",
-    "socket.io": "4.4.1",
-    "socket.io-client": "4.4.1",
+    "socket.io": "^4.4.1",
+    "socket.io-client": "^4.4.1",
     "uuid": "^8.3.2",
+    "vscode-jsonrpc": "^6.0.0",
     "vscode-languageserver-protocol": "~3.15.3",
     "vscode-uri": "^2.1.1",
     "vscode-ws-jsonrpc": "^0.2.0",
@@ -109,7 +110,7 @@
         "react-virtualized",
         "vscode-languageserver-protocol",
         "vscode-uri",
-        "vscode-ws-jsonrpc"
+        "vscode-jsonrpc"
       ],
       "export =": [
         "dompurify as DOMPurify",
@@ -166,6 +167,7 @@
   "files": [
     "electron-shared",
     "lib",
+    "MESSAGING.md",
     "shared",
     "src"
   ],
