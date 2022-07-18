@@ -24,7 +24,7 @@ describe('progress-location-service', () => {
     const SCM = 'scm';
     const FOO = 'foo';
 
-    it('done event should be fired for multiple progress locations – bug #7311', async () => {
+    it('done event should be fired for multiple progress locations - bug #7311', async () => {
         const eventLog = new Array<string>();
         const logEvent = (location: string, show: boolean) => eventLog.push(`${location} show: ${show}`);
 

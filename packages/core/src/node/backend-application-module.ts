@@ -18,9 +18,10 @@ import { ContainerModule, decorate, injectable } from 'inversify';
 import { ApplicationPackage } from '@theia/application-package';
 import { REQUEST_SERVICE_PATH } from '@theia/request';
 import {
-    bindContributionProvider, MessageService, MessageClient, ConnectionHandler, JsonRpcConnectionHandler,
-    CommandService, commandServicePath, messageServicePath
+    bindContributionProvider, MessageService, ConnectionHandler, JsonRpcConnectionHandler,
+    CommandService, commandServicePath
 } from '../common';
+import { MessageServer, MESSAGE_SERVER_PATH } from '../common/message-service-protocol';
 import { BackendApplication, BackendApplicationContribution, BackendApplicationCliContribution, BackendApplicationServer } from './backend-application';
 import { CliManager, CliContribution } from './cli';
 import { IPCConnectionProvider } from './messaging';
@@ -40,6 +41,7 @@ import { ProxyCliContribution } from './request/proxy-cli-contribution';
 import { bindNodeStopwatch, bindBackendStopwatchServer } from './performance';
 import { OSBackendApplicationContribution } from './os-backend-application-contribution';
 import { BackendRequestFacade } from './request/backend-request-facade';
+import { DefaultMessageService } from '../common/message-service';
 
 decorate(injectable(), ApplicationPackage);
 
@@ -48,8 +50,8 @@ const commandConnectionModule = ConnectionContainerModule.create(({ bindFrontend
 });
 
 const messageConnectionModule = ConnectionContainerModule.create(({ bind, bindFrontendService }) => {
-    bindFrontendService(messageServicePath, MessageClient);
-    bind(MessageService).toSelf().inSingletonScope();
+    bindFrontendService(MESSAGE_SERVER_PATH, MessageServer);
+    bind(MessageService).to(DefaultMessageService).inSingletonScope();
 });
 
 const quickPickConnectionModule = ConnectionContainerModule.create(({ bindFrontendService }) => {

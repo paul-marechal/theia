@@ -22,7 +22,7 @@ import { bindLogger } from '@theia/core/lib/node/logger-backend-module';
 import { NoSyncRepositoryManager } from '.././test/no-sync-repository-manager';
 import { GitEnvProvider, DefaultGitEnvProvider } from '../env/git-env-provider';
 import { MessageService, LogLevel } from '@theia/core/lib/common';
-import { MessageClient } from '@theia/core';
+import { MockMessageService } from '@theia/core/lib/common/test/mock-message-service';
 import { ILogger } from '@theia/core/lib/common/logger';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,8 +31,7 @@ export function initializeBindings(): { container: Container, bind: interfaces.B
     const bind = container.bind.bind(container);
     bind(DefaultGitEnvProvider).toSelf().inRequestScope();
     bind(GitEnvProvider).toService(DefaultGitEnvProvider);
-    bind(MessageService).toSelf();
-    bind(MessageClient).toSelf();
+    bind(MessageService).to(MockMessageService).inSingletonScope();
     bindLogger(bind);
     return { container, bind };
 }

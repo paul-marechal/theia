@@ -15,10 +15,12 @@
 // *****************************************************************************
 
 import { interfaces } from 'inversify';
+import { DefaultMessageService } from '../common/message-service';
 import {
-    bindContributionProvider, DefaultResourceProvider, MaybePromise, MessageClient,
+    bindContributionProvider, DefaultResourceProvider, MaybePromise,
     MessageService, ResourceProvider, ResourceResolver
 } from '../common';
+import { MessageServer } from '../common/message-service-protocol';
 import {
     bindPreferenceSchemaProvider, PreferenceProvider,
     PreferenceProviderProvider, PreferenceProxyOptions, PreferenceSchema, PreferenceSchemaProvider, PreferenceScope,
@@ -27,8 +29,21 @@ import {
 import { InjectablePreferenceProxy, PreferenceProxyFactory, PreferenceProxySchema } from './preferences/injectable-preference-proxy';
 
 export function bindMessageService(bind: interfaces.Bind): interfaces.BindingWhenOnSyntax<MessageService> {
-    bind(MessageClient).toSelf().inSingletonScope();
-    return bind(MessageService).toSelf().inSingletonScope();
+    // Stub MessageServer implementation:
+    bind<MessageServer>(MessageServer).toConstantValue({
+        async showMessage(message): Promise<undefined> {
+            console.log(message);
+            return;
+        },
+        async showProgress(id, message, token?): Promise<undefined> {
+            console.log(id, message);
+            return;
+        },
+        async updateProgress(id, update, message, token?): Promise<void> {
+            console.log(id, update, message);
+        },
+    });
+    return bind<MessageService>(MessageService).to(DefaultMessageService).inSingletonScope();
 }
 
 export function bindPreferenceService(bind: interfaces.Bind): void {

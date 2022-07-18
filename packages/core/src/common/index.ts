@@ -14,6 +14,12 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
+export { environment } from '@theia/application-package/lib/environment';
+export { MessageService } from './message-service';
+export { Message, MessageOptions, MessageType, Progress, ProgressMessage, ProgressMessageOptions, ProgressUpdate } from './message-service-protocol';
+
+// TODO: Convert * exports into explicit re-exports:
+
 export * from './types';
 export * from './disposable';
 export * from './reference';
@@ -30,8 +36,6 @@ export * from './path';
 export * from './logger';
 export * from './messaging';
 export * from './message-rpc';
-export * from './message-service';
-export * from './message-service-protocol';
 export * from './progress-service';
 export * from './progress-service-protocol';
 export * from './quick-pick-service';
@@ -43,6 +47,3 @@ export * from './contribution-filter';
 export * from './nls';
 export * from './numbers';
 export * from './performance';
-
-import { environment } from '@theia/application-package/lib/environment';
-export { environment };

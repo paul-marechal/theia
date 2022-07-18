@@ -15,20 +15,13 @@
 // *****************************************************************************
 
 import { injectable, inject } from 'inversify';
-import {
-    MessageClient,
-    MessageType,
-    MessageOptions,
-    Progress,
-    ProgressUpdate,
-    ProgressMessage
-} from './message-service-protocol';
+import { MessageServer, MessageType, MessageOptions, Progress, ProgressUpdate, ProgressMessage } from './message-service-protocol';
 import { CancellationTokenSource } from './cancellation';
 
 /**
  * Service to log and categorize messages, show progress information and offer actions.
  *
- * The messages are processed by this service and forwarded to an injected {@link MessageClient}.
+ * The messages are processed by this service and forwarded to an injected {@link MessageServer}.
  * For example "@theia/messages" provides such a client, rendering messages as notifications
  * in the frontend.
  *
@@ -44,12 +37,8 @@ import { CancellationTokenSource } from './cancellation';
  *   .then(action => action === "Rollback" && rollback());
  * ```
  */
-@injectable()
-export class MessageService {
-
-    constructor(
-        @inject(MessageClient) protected readonly client: MessageClient
-    ) { }
+export const MessageService = Symbol('MessageService');
+export interface MessageService {
 
     /**
      * Logs the message and, if given, offers actions to act on it.
@@ -59,6 +48,7 @@ export class MessageService {
      * @returns the selected action if there is any, `undefined` when there was no action or none was selected.
      */
     log<T extends string>(message: string, ...actions: T[]): Promise<T | undefined>;
+
     /**
      * Logs the message and, if given, offers actions to act on it.
      * @param message the message to log.
@@ -68,10 +58,6 @@ export class MessageService {
      * @returns the selected action if there is any, `undefined` when there was no action or none was selected.
      */
     log<T extends string>(message: string, options?: MessageOptions, ...actions: T[]): Promise<T | undefined>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    log(message: string, ...args: any[]): Promise<string | undefined> {
-        return this.processMessage(MessageType.Log, message, args);
-    }
 
     /**
      * Logs the message as "info" and, if given, offers actions to act on it.
@@ -81,6 +67,7 @@ export class MessageService {
      * @returns the selected action if there is any, `undefined` when there was no action or none was selected.
      */
     info<T extends string>(message: string, ...actions: T[]): Promise<T | undefined>;
+
     /**
      * Logs the message as "info" and, if given, offers actions to act on it.
      * @param message the message to log.
@@ -90,10 +77,6 @@ export class MessageService {
      * @returns the selected action if there is any, `undefined` when there was no action or none was selected.
      */
     info<T extends string>(message: string, options?: MessageOptions, ...actions: T[]): Promise<T | undefined>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    info(message: string, ...args: any[]): Promise<string | undefined> {
-        return this.processMessage(MessageType.Info, message, args);
-    }
 
     /**
      * Logs the message as "warning" and, if given, offers actions to act on it.
@@ -103,6 +86,7 @@ export class MessageService {
      * @returns the selected action if there is any, `undefined` when there was no action or none was selected.
      */
     warn<T extends string>(message: string, ...actions: T[]): Promise<T | undefined>;
+
     /**
      * Logs the message as "warning" and, if given, offers actions to act on it.
      * @param message the message to log.
@@ -112,10 +96,6 @@ export class MessageService {
      * @returns the selected action if there is any, `undefined` when there was no action or none was selected.
      */
     warn<T extends string>(message: string, options?: MessageOptions, ...actions: T[]): Promise<T | undefined>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    warn(message: string, ...args: any[]): Promise<string | undefined> {
-        return this.processMessage(MessageType.Warning, message, args);
-    }
 
     /**
      * Logs the message as "error" and, if given, offers actions to act on it.
@@ -125,6 +105,7 @@ export class MessageService {
      * @returns the selected action if there is any, `undefined` when there was no action or none was selected.
      */
     error<T extends string>(message: string, ...actions: T[]): Promise<T | undefined>;
+
     /**
      * Logs the message as "error" and, if given, offers actions to act on it.
      * @param message the message to log.
@@ -134,23 +115,6 @@ export class MessageService {
      * @returns the selected action if there is any, `undefined` when there was no action or none was selected.
      */
     error<T extends string>(message: string, options?: MessageOptions, ...actions: T[]): Promise<T | undefined>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    error(message: string, ...args: any[]): Promise<string | undefined> {
-        return this.processMessage(MessageType.Error, message, args);
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    protected processMessage(type: MessageType, text: string, args?: any[]): Promise<string | undefined> {
-        if (!!args && args.length > 0) {
-            const first = args[0];
-            const actions = Array.from(new Set<string>(args.filter(a => typeof a === 'string')));
-            const options = (typeof first === 'object' && !Array.isArray(first))
-                ? <MessageOptions>first
-                : undefined;
-            return this.client.showMessage({ type, options, text, actions });
-        }
-        return this.client.showMessage({ type, text });
-    }
 
     /**
      * Shows the given message as a progress.
@@ -189,20 +153,67 @@ export class MessageService {
      *   });
      * ```
      */
+    showProgress(message: ProgressMessage, onDidCancel?: () => void): Promise<Progress>
+}
+
+@injectable()
+export class DefaultMessageService implements MessageService {
+
+    protected counter = 0;
+    protected progressIdPrefix = Math.random().toString(36).substring(5);
+
+    constructor(
+        @inject(MessageServer) protected server: MessageServer
+    ) { }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    log(message: string, ...args: any[]): Promise<string | undefined> {
+        return this.processMessage(MessageType.Log, message, args);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    info(message: string, ...args: any[]): Promise<string | undefined> {
+        return this.processMessage(MessageType.Info, message, args);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    warn(message: string, ...args: any[]): Promise<string | undefined> {
+        return this.processMessage(MessageType.Warning, message, args);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    error(message: string, ...args: any[]): Promise<string | undefined> {
+        return this.processMessage(MessageType.Error, message, args);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    protected processMessage(type: MessageType, text: string, args?: any[]): Promise<string | undefined> {
+        if (args && args.length > 0) {
+            const first = args[0];
+            const actions = Array.from(new Set<string>(args.filter(a => typeof a === 'string')));
+            const options = (typeof first === 'object' && !Array.isArray(first))
+                ? <MessageOptions>first
+                : undefined;
+            return this.server.showMessage({ type, options, text, actions });
+        }
+        return this.server.showMessage({ type, text });
+    }
+
     async showProgress(message: ProgressMessage, onDidCancel?: () => void): Promise<Progress> {
         const id = this.newProgressId();
         const cancellationSource = new CancellationTokenSource();
-        const report = (update: ProgressUpdate) => {
-            this.client.reportProgress(id, update, message, cancellationSource.token);
-        };
         const type = message.type ?? MessageType.Progress;
         const actions = new Set<string>(message.actions);
         if (ProgressMessage.isCancelable(message)) {
+            // Ensure `Cancel` is the last element in the set:
             actions.delete(ProgressMessage.Cancel);
             actions.add(ProgressMessage.Cancel);
         }
         const clientMessage = { ...message, type, actions: Array.from(actions) };
-        const result = this.client.showProgress(id, clientMessage, cancellationSource.token);
+        const report = (update: ProgressUpdate) => {
+            this.server.updateProgress(id, update, message, cancellationSource.token);
+        };
+        const result = this.server.showProgress(id, clientMessage, cancellationSource.token);
         if (ProgressMessage.isCancelable(message) && typeof onDidCancel === 'function') {
             result.then(value => {
                 if (value === ProgressMessage.Cancel) {
@@ -218,8 +229,6 @@ export class MessageService {
         };
     }
 
-    private progressIdPrefix = Math.random().toString(36).substring(5);
-    private counter = 0;
     protected newProgressId(): string {
         return `${this.progressIdPrefix}-${++this.counter}`;
     }

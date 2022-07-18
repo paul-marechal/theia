@@ -27,9 +27,7 @@ import {
     ResourceResolver,
     CommandContribution, CommandRegistry, CommandService, commandServicePath,
     MenuModelRegistry, MenuContribution,
-    MessageClient,
     InMemoryResources,
-    messageServicePath,
     InMemoryTextResourceResolver,
     UntitledResourceResolver,
     MenuCommandAdapterRegistry,
@@ -37,6 +35,7 @@ import {
     MenuCommandAdapterRegistryImpl,
     MenuCommandExecutorImpl
 } from '../common';
+import { MessageServer, MESSAGE_SERVER_PATH } from '../common/message-service-protocol';
 import { KeybindingRegistry, KeybindingContext, KeybindingContribution } from './keybinding';
 import { FrontendApplication, FrontendApplicationContribution, DefaultFrontendApplicationContribution } from './frontend-application';
 import { DefaultOpenerService, OpenerService, OpenHandler } from './opener-service';
@@ -253,9 +252,8 @@ export const frontendApplicationModule = new ContainerModule((bind, _unbind, _is
     bindContributionProvider(bind, KeybindingContext);
     bindContributionProvider(bind, KeybindingContribution);
 
-    bindMessageService(bind).onActivation(({ container }, messages) => {
-        const client = container.get(MessageClient);
-        WebSocketConnectionProvider.createProxy(container, messageServicePath, client);
+    bindMessageService(bind).onActivation((ctx, messages) => {
+        WebSocketConnectionProvider.createProxy(ctx.container, MESSAGE_SERVER_PATH, ctx.container.get(MessageServer));
         return messages;
     });
 

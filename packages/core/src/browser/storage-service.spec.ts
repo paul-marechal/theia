@@ -21,28 +21,19 @@ import { LocalStorageService, StorageService } from './storage-service';
 import { expect } from 'chai';
 import { ILogger } from '../common/logger';
 import { MockLogger } from '../common/test/mock-logger';
-import * as sinon from 'sinon';
-import { MessageService, MessageClient } from '../common/';
+import { MessageService } from '../common/';
+import { MockMessageService } from '../common/test/mock-message-service';
 
 let storageService: StorageService;
 
 before(() => {
     const testContainer = new Container();
-    testContainer.bind(ILogger).toDynamicValue(ctx => {
-        const logger = new MockLogger();
-        /* Note this is not really needed but here we could just use the
-        MockLogger since it does what we need but this is there as a demo of
-        sinon for other uses-cases. We can remove this once this technique is
-        more generally used. */
-        sinon.stub(logger, 'warn').callsFake(async () => { });
-        return logger;
-    });
-    testContainer.bind(StorageService).to(LocalStorageService).inSingletonScope();
-    testContainer.bind(WindowService).to(MockWindowService).inSingletonScope();
-    testContainer.bind(LocalStorageService).toSelf().inSingletonScope();
 
-    testContainer.bind(MessageClient).toSelf().inSingletonScope();
-    testContainer.bind(MessageService).toSelf().inSingletonScope();
+    testContainer.bind(ILogger).to(MockLogger).inTransientScope();
+    testContainer.bind(WindowService).to(MockWindowService).inSingletonScope();
+    testContainer.bind(MessageService).to(MockMessageService).inSingletonScope();
+
+    testContainer.bind(StorageService).to(LocalStorageService).inSingletonScope();
 
     storageService = testContainer.get(StorageService);
 });
