@@ -14,19 +14,20 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
-import { injectable, inject, optional, postConstruct } from 'inversify';
+import { injectable, inject, postConstruct } from 'inversify';
 import * as React from 'react';
 import ReactTooltip from 'react-tooltip';
-import { ReactRenderer, RendererHost } from './widgets/react-renderer';
+import { ReactRenderer } from './widgets/react-renderer';
 import { CorePreferences } from './core-preferences';
 import { v4 } from 'uuid';
 
 export const TooltipService = Symbol('TooltipService');
 
 export interface TooltipService {
-    tooltipId: string;
+    readonly tooltipId: string;
     attachTo(host: HTMLElement): void;
     update(fullRender?: boolean): void;
+    getHtmlAttributes(data: string): object
 }
 
 /**
@@ -49,18 +50,12 @@ const DELAY_PREFERENCE = 'workbench.hover.delay';
 @injectable()
 export class TooltipServiceImpl extends ReactRenderer implements TooltipService {
 
-    @inject(CorePreferences)
-    protected readonly corePreferences: CorePreferences;
+    tooltipId = v4();
 
-    public readonly tooltipId: string;
     protected rendered = false;
 
-    constructor(
-        @inject(RendererHost) @optional() host?: RendererHost
-    ) {
-        super(host);
-        this.tooltipId = v4();
-    }
+    @inject(CorePreferences)
+    protected readonly corePreferences: CorePreferences;
 
     @postConstruct()
     protected init(): void {
@@ -71,26 +66,27 @@ export class TooltipServiceImpl extends ReactRenderer implements TooltipService 
         }));
     }
 
-    public attachTo(host: HTMLElement): void {
+    attachTo(host: HTMLElement): void {
         host.appendChild(this.host);
     }
 
-    public update(fullRender = false): void {
+    update(fullRender = false): void {
         if (fullRender || !this.rendered) {
             this.render();
             this.rendered = true;
         }
-
         ReactTooltip.rebuild();
+    }
+
+    getHtmlAttributes(tooltipData: string): object {
+        return {
+            'data-for': this.tooltipId,
+            'data-tip': tooltipData
+        };
     }
 
     protected override doRender(): React.ReactNode {
         const hoverDelay = this.corePreferences.get(DELAY_PREFERENCE);
         return <ReactTooltip id={this.tooltipId} className='theia-tooltip' html={true} delayShow={hoverDelay} />;
-    }
-
-    public override dispose(): void {
-        this.toDispose.dispose();
-        super.dispose();
     }
 }

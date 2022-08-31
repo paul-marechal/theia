@@ -10,9 +10,6 @@
   ],
   "references": [
     {
-      "path": "../../dev-packages/ovsx-client"
-    },
-    {
       "path": "../core"
     },
     {
@@ -23,9 +20,6 @@
     },
     {
       "path": "../plugin-ext-vscode"
-    },
-    {
-      "path": "../plugin-registry"
     },
     {
       "path": "../preferences"

@@ -90,6 +90,7 @@ export type VSXExtensionFactory = (options: VSXExtensionOptions) => VSXExtension
 
 @injectable()
 export class VSXExtension implements VSXExtensionData, TreeElement {
+
     /**
      * Ensure the version string begins with `'v'`.
      */
@@ -478,7 +479,7 @@ export class VSXExtensionComponent<Props extends VSXExtensionComponent.Props = V
                     {this.renderAction(this.props.host)}
                 </div>
             </div>
-        </div >;
+        </div>;
     }
 }
 

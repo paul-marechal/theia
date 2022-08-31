@@ -40,13 +40,15 @@ import { LanguageQuickPickService } from '@theia/core/lib/browser/i18n/language-
 import { VSXLanguageQuickPickService } from './vsx-language-quick-pick-service';
 
 export default new ContainerModule((bind, unbind, _, rebind) => {
-    bind<OVSXClientProvider>(OVSXClientProvider).toDynamicValue(ctx => {
-        const clientPromise = createOVSXClient(ctx.container.get(VSXEnvironment), ctx.container.get(RequestService));
-        return () => clientPromise;
-    }).inSingletonScope();
-    bind(VSXEnvironment).toDynamicValue(
-        ctx => WebSocketConnectionProvider.createProxy(ctx.container, VSX_ENVIRONMENT_PATH)
-    ).inSingletonScope();
+    bind<OVSXClientProvider>(OVSXClientProvider)
+        .toDynamicValue(ctx => {
+            const clientPromise = createOVSXClient(ctx.container.get(VSXEnvironment), ctx.container.get(RequestService));
+            return () => clientPromise;
+        })
+        .inSingletonScope();
+    bind(VSXEnvironment)
+        .toDynamicValue(ctx => WebSocketConnectionProvider.createProxy(ctx.container, VSX_ENVIRONMENT_PATH))
+        .inSingletonScope();
 
     bind(VSXExtension).toSelf();
     bind(VSXExtensionFactory).toFactory(ctx => (option: VSXExtensionOptions) => {
