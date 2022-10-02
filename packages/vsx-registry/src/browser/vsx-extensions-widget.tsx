@@ -107,8 +107,12 @@ export class VSXExtensionsWidget extends SourceTreeWidget implements BadgeWidget
 
     protected async resolveCount(): Promise<number | undefined> {
         if (this.options.id !== VSXExtensionsSourceOptions.SEARCH_RESULT) {
-            const elements = await this.source?.getElements() || [];
-            return [...elements].length;
+            if (!this.source) { return; }
+            const iterator = await this.source.getElements();
+            if (!iterator) { return; }
+            let i = 0;
+            while (!iterator.next().done) { i += 1; };
+            return i;
         }
         return undefined;
     }

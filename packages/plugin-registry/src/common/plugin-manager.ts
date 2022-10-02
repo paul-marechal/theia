@@ -1,5 +1,5 @@
 // *****************************************************************************
-// Copyright (C) 2020 TypeFox and others.
+// Copyright (C) 2022 Ericsson and others.
 //
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License v. 2.0 which is available at
@@ -14,16 +14,15 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
-/* note: this bogus test file is required so that
-   we are able to run mocha unit tests on this
-   package, without having any actual unit tests in it.
-   This way a coverage report will be generated,
-   showing 0% coverage, instead of no report.
-   This file can be removed once we have real unit
-   tests in place. */
+import { Plugin } from './plugin';
 
-describe('vsx-registry package', () => {
-
-    it('support code coverage statistics', () => true);
-
-});
+export interface PluginManager {
+    getAll(): Plugin[];
+    get(id: string): Plugin | undefined;
+    has(id: string): boolean;
+    install(id: string, version: string): Promise<void>;
+    update(id: string, version: string): Promise<void>;
+    enable(id: string): Promise<void>;
+    disable(id: string): Promise<void>;
+    uninstall(id: string): Promise<void>;
+}

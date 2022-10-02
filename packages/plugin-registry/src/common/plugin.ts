@@ -114,6 +114,15 @@ export abstract class AbstractPlugin implements Plugin, BuiltinPlugin, UserPlugi
         this.enabled = false;
         this.disposables.dispose();
     }
+
+    protected setBusy(transition: Plugin.Transition): void {
+        this.busy = transition;
+        this.onDidChangePluginEmitter.fire();
+    }
+
+    protected resetBusy(): void {
+        this.setBusy(Plugin.Transition.None);
+    }
 }
 
 export namespace Plugin {
@@ -162,7 +171,7 @@ export namespace Plugin {
      * can be installed, which builtins can't be.
      */
     export function isUninstalled(plugin: Plugin): plugin is Plugin & UninstalledPlugin {
-        return plugin.type !== Type.Builtin && !plugin.installed;
+        return plugin.type !== Type.Builtin && !isTransitioning(plugin) && !plugin.installed;
     }
 
     /**
@@ -171,15 +180,15 @@ export namespace Plugin {
      * can be updated or uninstalled, which builtins can't be.
      */
     export function isInstalled(plugin: Plugin): plugin is Plugin & InstalledPlugin {
-        return plugin.type !== Type.Builtin && plugin.installed;
+        return plugin.type !== Type.Builtin && !isTransitioning(plugin) && plugin.installed;
     }
 
     export function isEnabled(plugin: Plugin): plugin is Plugin & EnabledPlugin {
-        return plugin.enabled;
+        return !isTransitioning(plugin) && plugin.enabled;
     }
 
     export function isDisabled(plugin: Plugin): plugin is Plugin & DisabledPlugin {
-        return !plugin.enabled;
+        return !isTransitioning(plugin) && !plugin.enabled;
     }
 
     export function getVersion(plugin: Plugin): string | undefined {

@@ -50,11 +50,11 @@ export namespace VsxExtensionAction {
             return () => listener.dispose();
         });
         if (Plugin.isTransitioning(props.plugin)) {
-            if (props.plugin.state === Plugin.State.Uninstalling) {
+            if (props.plugin.busy === Plugin.Transition.Uninstalling) {
                 return <button className="theia-button action theia-mod-disabled">{nls.localizeByDefault('Uninstalling')}</button>;
             } else {
                 let text;
-                if (props.plugin.state === Plugin.State.Installing) {
+                if (props.plugin.busy === Plugin.Transition.Installing) {
                     text = nls.localizeByDefault('Installing');
                 } else {
                     text = 'Busy...';

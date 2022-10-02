@@ -14,46 +14,11 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
-import { inject, injectable, postConstruct } from '@theia/core/shared/inversify';
-import { HostedPluginSupport } from '@theia/plugin-ext/lib/hosted/browser/hosted-plugin';
 import { AbstractPlugin, Plugin } from '@theia/plugin-registry/lib/common/plugin';
+import { PluginManager } from '@theia/plugin-registry/lib/common/plugin-manager';
 
 export interface VsxExtensionPlugin extends Plugin {
 
-}
-
-export type PluginTransitionResult = [error: Error | undefined, state: Plugin.State];
-
-export interface PluginManager {
-    getAll(): Plugin[];
-    get(id: string): Plugin | undefined;
-    has(id: string): boolean;
-    install(id: string, version: string): Promise<PluginTransitionResult>;
-    update(id: string, version: string): Promise<PluginTransitionResult>;
-    enable(id: string): Promise<PluginTransitionResult>;
-    disable(id: string): Promise<PluginTransitionResult>;
-    uninstall(id: string): Promise<PluginTransitionResult>;
-}
-
-@injectable()
-export class VsxPluginManager {
-
-    protected plugins = new Map<string, Plugin>();
-
-    @inject(HostedPluginSupport)
-    protected pluginSupport: HostedPluginSupport;
-
-    @postConstruct()
-    protected postConstruct(): void {
-        this.pluginSupport.onDidChangePlugins(() => this.updatePlugins());
-        this.updatePlugins();
-    }
-
-    protected updatePlugins(): void {
-        this.pluginSupport.plugins.forEach(plugin => {
-            // plugin.outOfSync ???????????
-        });
-    }
 }
 
 export class VsxExtensionPluginImpl extends AbstractPlugin {
@@ -61,7 +26,10 @@ export class VsxExtensionPluginImpl extends AbstractPlugin {
     constructor(
         public id: string,
         public type: Plugin.Type,
-        public state: Plugin.State,
+        public busy: Plugin.Transition,
+        public loaded: boolean,
+        public installed: boolean,
+        public enabled: boolean,
         protected pluginManager: PluginManager
     ) {
         super();
@@ -71,44 +39,49 @@ export class VsxExtensionPluginImpl extends AbstractPlugin {
         if (!Plugin.isUninstalled(this)) {
             throw new Error('illegal state');
         }
-        this.setAndEmitState(Plugin.State.Installing);
-        const [, state] = await this.pluginManager.install(this.id, version);
-        this.setAndEmitState(state);
+        this.setBusy(Plugin.Transition.Installing);
+        await this.pluginManager.install(this.id, version);
+        this.loaded = true;
+        this.installed = true;
+        this.resetBusy();
     }
 
     async update(version: string): Promise<void> {
         if (!Plugin.isUser(this)) {
             throw new Error('illegal state');
         }
-        this.setAndEmitState(Plugin.State.Updating);
-        const [, state] = await this.pluginManager.update(this.id, version);
-        this.setAndEmitState(state);
+        this.setBusy(Plugin.Transition.Updating);
+        await this.pluginManager.update(this.id, version);
+        this.resetBusy();
     }
 
     async uninstall(): Promise<void> {
         if (!Plugin.isInstalled(this)) {
             throw new Error('illegal state');
         }
-        this.setAndEmitState(Plugin.State.Uninstalling);
-        const [, state] = await this.pluginManager.uninstall(this.id);
-        this.setAndEmitState(state);
+        this.setBusy(Plugin.Transition.Uninstalling);
+        await this.pluginManager.uninstall(this.id);
+        this.installed = false;
+        this.resetBusy();
     }
 
     async disable(): Promise<void> {
         if (!Plugin.isEnabled(this)) {
             throw new Error('illegal state');
         }
-        this.setAndEmitState(Plugin.State.Disabling);
-        const [, state] = await this.pluginManager.disable(this.id);
-        this.setAndEmitState(state);
+        this.setBusy(Plugin.Transition.Disabling);
+        await this.pluginManager.disable(this.id);
+        this.enabled = false;
+        this.resetBusy();
     }
 
     async enable(): Promise<void> {
         if (!Plugin.isDisabled(this)) {
             throw new Error('illegal state');
         }
-        this.setAndEmitState(Plugin.State.Enabling);
-        const [, state] = await this.pluginManager.enable(this.id);
-        this.setAndEmitState(state);
+        this.setBusy(Plugin.Transition.Enabling);
+        await this.pluginManager.enable(this.id);
+        this.enabled = true;
+        this.resetBusy();
     }
 }

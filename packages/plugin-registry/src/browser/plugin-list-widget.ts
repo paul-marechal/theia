@@ -16,8 +16,9 @@
 
 import { Emitter, Event } from '@theia/core';
 import { SourceTreeWidget } from '@theia/core/lib/browser/source-tree';
-import { injectable, postConstruct } from '@theia/core/shared/inversify';
+import { inject, injectable, postConstruct } from '@theia/core/shared/inversify';
 import { BadgeWidget } from '@theia/core/lib/browser';
+import { PluginTreeSource } from './plugin-tree-source';
 
 @injectable()
 export class PluginListWidget extends SourceTreeWidget implements BadgeWidget {
@@ -25,10 +26,14 @@ export class PluginListWidget extends SourceTreeWidget implements BadgeWidget {
     protected _badge?: number;
     protected onDidChangeBadgeEmitter = new Emitter<void>();
 
+    @inject(PluginTreeSource)
+    protected pluginTreeSource?: PluginTreeSource;
+
     @postConstruct()
     protected override init(): void {
         super.init();
         this.addClass('theia-vsx-extensions');
+        this.source = this.pluginTreeSource;
     }
 
     get onDidChangeBadge(): Event<void> {
@@ -44,5 +49,9 @@ export class PluginListWidget extends SourceTreeWidget implements BadgeWidget {
             this._badge = value;
             this.onDidChangeBadgeEmitter.fire();
         }
+    }
+
+    protected override handleDblClickEvent(): void {
+        // Don't open the editor view on a double click.
     }
 }

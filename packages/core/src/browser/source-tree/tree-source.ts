@@ -48,26 +48,31 @@ export namespace CompositeTreeElement {
 
 @injectable()
 export abstract class TreeSource implements Disposable {
-    protected readonly onDidChangeEmitter = new Emitter<void>();
-    readonly onDidChange: Event<void> = this.onDidChangeEmitter.event;
-    protected fireDidChange(): void {
-        this.onDidChangeEmitter.fire(undefined);
-    }
 
-    readonly id: string | undefined;
-    readonly placeholder: string | undefined;
+    abstract getElements(): MaybePromise<IterableIterator<TreeElement>>;
+
+    readonly id?: string | undefined;
+    readonly placeholder?: string | undefined;
+
+    protected readonly onDidChangeEmitter = new Emitter<void>();
+    protected readonly toDispose = new DisposableCollection(this.onDidChangeEmitter);
 
     constructor(@unmanaged() options: TreeSourceOptions = {}) {
         this.id = options.id;
         this.placeholder = options.placeholder;
     }
 
-    protected readonly toDispose = new DisposableCollection(this.onDidChangeEmitter);
+    get onDidChange(): Event<void> {
+        return this.onDidChangeEmitter.event;
+    }
+
     dispose(): void {
         this.toDispose.dispose();
     }
 
-    abstract getElements(): MaybePromise<IterableIterator<TreeElement>>;
+    protected fireDidChange(): void {
+        this.onDidChangeEmitter.fire();
+    }
 }
 export interface TreeSourceOptions {
     id?: string
