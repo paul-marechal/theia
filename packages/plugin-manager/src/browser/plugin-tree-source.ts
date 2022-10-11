@@ -32,7 +32,7 @@ export interface ProvidedPlugin {
     builtin: boolean
 }
 
-export const PluginTreeSourceProvider = Symbol('PluginTreeSourceProvider');
+export const PluginProviderContribution = Symbol('PluginProviderContribution');
 export interface PluginProviderContribution {
     id?: string
     providePlugins(query: PluginQuery): MaybePromise<ProvidedPlugin[]>;
@@ -44,19 +44,19 @@ export interface PluginReducer {
     reduceProvidedPlugins(plugins: ProvidedPlugin[]): MaybePromise<Map<string, string[]>>;
 }
 
-export const PluginProviderHandler = Symbol('PluginProviderHandler');
-export interface PluginProviderHandler {
+export const PluginProvider = Symbol('PluginProvider');
+export interface PluginProvider {
     providePlugins(query: PluginQuery): MaybePromise<ProvidedPlugin[]>;
     provideTreeElement(pluginId: string): TreeElement;
 }
 
 @injectable()
-export class DefaultPluginProvider {
+export class DefaultPluginProvider implements PluginProvider {
 
     protected providers = new Map<string, PluginProviderContribution>();
 
     constructor(
-        @inject(ContributionProvider) @named(PluginTreeSourceProvider)
+        @inject(ContributionProvider) @named(PluginProviderContribution)
         contributions: ContributionProvider<PluginProviderContribution>
     ) {
         contributions.getContributions().forEach(provider => {

@@ -14,24 +14,25 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
-import URI from '@theia/core/lib/common/uri';
 import { expect } from 'chai';
-import { PluginUri } from './plugin-uri';
+import { DefaultPluginUri } from './plugin-uri';
 
 describe('PluginUri', () => {
 
+    const pluginUri = new DefaultPluginUri();
+
     it('#create', () => {
-        const withoutVersion = PluginUri.create({
+        const withoutVersion = pluginUri.create({
             type: 'someType',
             id: 'somePublisher.somePlugin'
         });
-        const withVersion = PluginUri.create({
+        const withVersion = pluginUri.create({
             type: 'someType',
             id: 'somePublisher.somePlugin',
             version: '1.2.3'
         });
-        expect(withoutVersion.toString(true)).eq('plugin:/someType/somePublisher.somePlugin');
-        expect(withVersion.toString(true)).eq('plugin:/someType/somePublisher.somePlugin@1.2.3');
+        expect(withoutVersion).eq('plugin:/someType/somePublisher.somePlugin');
+        expect(withVersion).eq('plugin:/someType/somePublisher.somePlugin@1.2.3');
     });
 
     it('#parse', () => {
@@ -40,26 +41,19 @@ describe('PluginUri', () => {
             id: 'somePublisher.somePlugin',
             version: '1.2.3'
         };
-        const uri = PluginUri.create(expected);
-        const parsed = PluginUri.parse(uri);
+        const uri = pluginUri.create(expected);
+        const parsed = pluginUri.parse(uri);
         expect(parsed).deep.equal(expected);
     });
 
     it('#simplified', () => {
-        const input = {
+        const input = pluginUri.create({
             type: 'someType',
             id: 'somePublisher.somePlugin',
             version: '1.2.3',
             provider: 'someProvider'
-        };
-        const inputUri = PluginUri.create(input);
-        const inputString = inputUri.toString(true);
-        const expected = 'plugin:/someType/somePublisher.somePlugin';
-        const radicalUri = PluginUri.radical(inputUri);
-        const radicalString = PluginUri.radical(inputString);
-        expect(radicalUri).instanceof(URI);
-        expect(typeof radicalString).eq('string');
-        expect(radicalUri?.toString(true)).eq(expected);
-        expect(radicalString).eq(expected);
+        });
+        const radical = pluginUri.radical(input);
+        expect(radical).eq('plugin:/someType/somePublisher.somePlugin');
     });
 });

@@ -20,6 +20,7 @@
     "@theia/navigator": "1.29.0",
     "@theia/output": "1.29.0",
     "@theia/plugin": "1.29.0",
+    "@theia/plugin-manager": "1.29.0",
     "@theia/preferences": "1.29.0",
     "@theia/scm": "1.29.0",
     "@theia/search-in-workspace": "1.29.0",

@@ -124,10 +124,10 @@
       "path": "packages/plugin-ext-vscode"
     },
     {
-      "path": "packages/plugin-metrics"
+      "path": "packages/plugin-manager"
     },
     {
-      "path": "packages/plugin-registry"
+      "path": "packages/plugin-metrics"
     },
     {
       "path": "packages/preferences"
