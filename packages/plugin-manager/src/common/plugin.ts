@@ -14,41 +14,36 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
-import { Disposable, DisposableCollection, Emitter, Event } from '@theia/core';
+import { Event } from '@theia/core';
 
 export interface Plugin {
+    /**
+     * e.g. `theia`, `vscode`, etc.
+     */
+    readonly type: string;
+    /**
+     * e.g. `publisherId.pluginId`.
+     */
     readonly id: string;
-    readonly type: Plugin.Type;
+    /**
+     * If the plugin is currently busy a.k.a. going through transitions.
+     */
     readonly busy: Plugin.Transition;
-    readonly installed: boolean;
     /**
      * When a plugin is loaded, it can always be enabled/disabled.
      */
     readonly loaded: boolean;
+    readonly builtin: boolean;
     readonly enabled: boolean;
+    readonly installed: boolean;
     onDidChangePlugin: Event<void>;
 }
 
-export interface BuiltinPlugin {
-    readonly builtinVersion: string;
-}
-
-export interface UserPlugin {
-    readonly availableVersions: string[];
-    onDidChangeAvailableVersions: Event<void>;
-}
-
-export interface LoadedPlugin {
-    readonly loadedVersion: string;
-}
-
 export interface UninstalledPlugin {
-    install(version: string): Promise<void>;
+    // install(version: string): Promise<void>;
 }
 
 export interface InstalledPlugin {
-    readonly installedVersion: string;
-    update(version: string): Promise<void>;
     uninstall(): Promise<void>;
 }
 
@@ -58,71 +53,6 @@ export interface EnabledPlugin {
 
 export interface DisabledPlugin {
     enable(): Promise<void>;
-}
-
-/**
- * Utility class to quickly implement a plugin handle.
- */
-export abstract class AbstractPlugin implements Plugin, BuiltinPlugin, UserPlugin, LoadedPlugin, InstalledPlugin, UninstalledPlugin, EnabledPlugin, DisabledPlugin, Disposable {
-
-    abstract id: string;
-    abstract type: Plugin.Type;
-    abstract busy: Plugin.Transition;
-    abstract installed: boolean;
-    abstract loaded: boolean;
-    abstract enabled: boolean;
-
-    abstract install(version: string): Promise<void>;
-    abstract update(version: string): Promise<void>;
-    abstract uninstall(): Promise<void>;
-    abstract disable(): Promise<void>;
-    abstract enable(): Promise<void>;
-
-    protected _builtinVersion?: string;
-    protected _loadedVersion?: string;
-    protected _installedVersion?: string;
-    protected _availableVersions?: string;
-
-    protected disposables = new DisposableCollection();
-    protected onDidChangePluginEmitter = this.disposables.pushThru(new Emitter<void>());
-    protected onDidChangeAvailableVersionsEmitter = this.disposables.pushThru(new Emitter<void>());
-
-    get onDidChangePlugin(): Event<void> {
-        return this.onDidChangePluginEmitter.event;
-    }
-
-    get onDidChangeAvailableVersions(): Event<void> {
-        return this.onDidChangeAvailableVersionsEmitter.event;
-    }
-
-    @CheckedGetSet(Plugin.isBuiltin, 'plugin must be a builtin to get/set this value')
-    builtinVersion: string;
-
-    @CheckedGetSet(Plugin.isUser, 'plugin must be installed to get/set this value')
-    availableVersions: string[];
-
-    @CheckedGetSet(Plugin.isLoaded, 'plugin must be loaded to get/set this value')
-    loadedVersion: string;
-
-    @CheckedGetSet(Plugin.isInstalled, 'plugin must be installed to get/set this value')
-    installedVersion: string;
-
-    dispose(): void {
-        this.busy = Plugin.Transition.None;
-        this.installed = false;
-        this.loaded = false;
-        this.enabled = false;
-        this.disposables.dispose();
-    }
-
-    protected setBusy(transition: Plugin.Transition): void {
-        this.busy = transition;
-        this.onDidChangePluginEmitter.fire();
-    }
-
-    protected resetBusy(): void {
-        this.setBusy(Plugin.Transition.None);
-    }
 }
 
 export namespace Plugin {
@@ -153,15 +83,15 @@ export namespace Plugin {
         return plugin.busy !== Transition.None;
     }
 
-    export function isBuiltin(plugin: Plugin): plugin is Plugin & BuiltinPlugin {
-        return plugin.type === Type.Builtin;
+    export function isBuiltin(plugin: Plugin): boolean {
+        return plugin.builtin;
     }
 
-    export function isUser(plugin: Plugin): plugin is Plugin & UserPlugin {
-        return plugin.type === Type.User;
+    export function isUser(plugin: Plugin): boolean {
+        return !plugin.builtin;
     }
 
-    export function isLoaded(plugin: Plugin): plugin is Plugin & LoadedPlugin {
+    export function isLoaded(plugin: Plugin): boolean {
         return plugin.loaded;
     }
 
@@ -171,7 +101,7 @@ export namespace Plugin {
      * can be installed, which builtins can't be.
      */
     export function isUninstalled(plugin: Plugin): plugin is Plugin & UninstalledPlugin {
-        return plugin.type !== Type.Builtin && !isTransitioning(plugin) && !plugin.installed;
+        return !isBuiltin(plugin) && !isTransitioning(plugin) && !plugin.installed;
     }
 
     /**
@@ -180,7 +110,7 @@ export namespace Plugin {
      * can be updated or uninstalled, which builtins can't be.
      */
     export function isInstalled(plugin: Plugin): plugin is Plugin & InstalledPlugin {
-        return plugin.type !== Type.Builtin && !isTransitioning(plugin) && plugin.installed;
+        return !isBuiltin(plugin) && !isTransitioning(plugin) && plugin.installed;
     }
 
     export function isEnabled(plugin: Plugin): plugin is Plugin & EnabledPlugin {
@@ -191,41 +121,13 @@ export namespace Plugin {
         return !isTransitioning(plugin) && !plugin.enabled;
     }
 
-    export function getVersion(plugin: Plugin): string | undefined {
-        if (isBuiltin(plugin)) {
-            return plugin.builtinVersion;
-        } else if (isLoaded(plugin)) {
-            return plugin.loadedVersion;
-        } else if (isInstalled(plugin)) {
-            return plugin.installedVersion;
-        }
-    }
-}
-
-/**
- * Run the predicate function before getting/setting the field and throw if
- * the predicate returns a falsy-value.
- */
-export function CheckedGetSet<T>(predicate: (self: T, hiddenField: string) => unknown, message: string): (target: T, propertyKey: string | symbol) => void {
-    return (target, propertyKey) => {
-        if (typeof propertyKey !== 'string') {
-            throw new TypeError('not a string property!');
-        }
-        const hiddenField = '_' + propertyKey;
-        Object.defineProperty(target, propertyKey, {
-            enumerable: true,
-            get(): unknown {
-                if (!predicate(this, hiddenField)) {
-                    throw new TypeError(message);
-                }
-                return this[hiddenField];
-            },
-            set(value: unknown): void {
-                if (!predicate(this, hiddenField)) {
-                    throw new TypeError(message);
-                }
-                this[hiddenField] = value;
-            }
-        });
-    };
+    // export function getVersion(plugin: Plugin): string | undefined {
+    //     if (isBuiltin(plugin)) {
+    //         return plugin.builtinVersion;
+    //     } else if (isLoaded(plugin)) {
+    //         return plugin.loadedVersion;
+    //     } else if (isInstalled(plugin)) {
+    //         return plugin.installedVersion;
+    //     }
+    // }
 }

@@ -14,15 +14,23 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
-import { Plugin } from './plugin';
+import { injectable } from '@theia/core/shared/inversify';
+import { PluginReducer, ProvidedPlugins, ReducedPlugins } from './plugin-manager';
 
-export interface PluginManager {
-    getAll(): Plugin[];
-    get(id: string): Plugin | undefined;
-    has(id: string): boolean;
-    install(id: string, version: string): Promise<void>;
-    update(id: string, version: string): Promise<void>;
-    enable(id: string): Promise<void>;
-    disable(id: string): Promise<void>;
-    uninstall(id: string): Promise<void>;
+@injectable()
+export class DefaultPluginReducer implements PluginReducer {
+
+    async reducePlugins(provided: ProvidedPlugins[]): Promise<ReducedPlugins> {
+        const reduced: ReducedPlugins = {};
+        provided.forEach(({ provider, plugins }) => {
+            plugins.forEach(plugin => {
+                if (plugin.id in reduced) {
+                    return;
+                } else {
+                    reduced[plugin.id] = { provider, plugin };
+                }
+            });
+        });
+        return reduced;
+    }
 }

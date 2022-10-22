@@ -14,17 +14,31 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
+import { classImplements } from '@theia/core/lib/common/decorators';
 import URI from '@theia/core/lib/common/uri';
-import { injectable } from '@theia/core/shared/inversify';
+import { interfaces } from '@theia/core/shared/inversify';
 
 export interface PluginUriComponents {
-    type: string
-    id: string
-    version?: string
-    provider?: string
+    /**
+     * e.g. `theia`, `vscode`, etc.
+     */
+    type: string;
+    /**
+     * In case the plugin type has the concept of `publisher` it should be part
+     * of the `id` here.
+     */
+    id: string;
+    version?: string;
+    provider?: string;
 }
 
-export const PluginUri = Symbol('PluginUri');
+/**
+ * @example
+ *
+ * 'theia-plugin:/vscode/pluginId'
+ * 'theia-plugin:/vscode/pluginId@1.2.3'
+ */
+export const PluginUri = Symbol('PluginUri') as symbol & interfaces.Abstract<PluginUri>;
 export interface PluginUri {
     readonly scheme: string;
     create(components: PluginUriComponents): string;
@@ -36,25 +50,17 @@ export interface PluginUri {
     radical(uri: URI | string): string | undefined;
 }
 
-/**
- * @example
- *
- * 'theia-plugin:/vscode/pluginId'
- * 'theia-plugin:/vscode/pluginId@1.2.3'
- */
-@injectable()
-export class DefaultPluginUri implements PluginUri {
+@classImplements<PluginUri>()
+export class DefaultPluginUri {
 
-    get scheme(): string {
-        return 'theia-plugin';
-    }
+    static scheme = 'theia-plugin';
 
-    is(uriOrString: URI | string): uriOrString is URI | string {
+    static is(uriOrString: URI | string): uriOrString is URI | string {
         const uri = typeof uriOrString === 'object' ? uriOrString : new URI(uriOrString);
         return uri.scheme === this.scheme;
     }
 
-    create(components: PluginUriComponents): string {
+    static create(components: PluginUriComponents): string {
         let path = '/' + components.type + '/' + components.id;
         if (components.version) {
             path += '@' + components.version;
@@ -65,7 +71,7 @@ export class DefaultPluginUri implements PluginUri {
             .toString(true);
     }
 
-    parse(uriOrString: URI | string): PluginUriComponents | undefined {
+    static parse(uriOrString: URI | string): PluginUriComponents | undefined {
         if (!this.is(uriOrString)) {
             return;
         }
@@ -78,7 +84,7 @@ export class DefaultPluginUri implements PluginUri {
         return { type, id, version };
     }
 
-    radical(uriOrString: URI | string): string | undefined {
+    static radical(uriOrString: URI | string): string | undefined {
         const components = this.parse(uriOrString);
         if (!components) {
             return;

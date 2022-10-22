@@ -17,7 +17,7 @@
 import { Emitter, Event } from '@theia/core';
 import { inject, injectable, postConstruct } from '@theia/core/shared/inversify';
 import { HostedPluginSupport } from '@theia/plugin-ext/lib/hosted/browser/hosted-plugin';
-import { Plugin } from '@theia/plugin-registry/lib/common/plugin';
+import { Plugin } from '@theia/plugin-manager/lib/common/plugin';
 
 @injectable()
 export class VsxExtensionsState {

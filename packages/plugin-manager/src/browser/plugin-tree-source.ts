@@ -51,7 +51,7 @@ export interface PluginProvider {
 }
 
 @injectable()
-export class DefaultPluginProvider implements PluginProvider {
+export class DefaultPluginProvider {
 
     protected providers = new Map<string, PluginProviderContribution>();
 
@@ -95,10 +95,13 @@ export class DefaultPluginProvider implements PluginProvider {
 @injectable()
 export class DefaultPluginReducer implements PluginReducer {
 
+    @inject(PluginUri)
+    protected pluginUri: PluginUri;
+
     reduceProvidedPlugins(provided: ProvidedPlugin[]): Map<string, string[]> {
         const plugins = new Map<string, string[]>();
         provided.forEach(plugin => {
-            const radical = PluginUri.radical(plugin.pluginId)!;
+            const radical = this.pluginUri.radical(plugin.pluginId)!;
             let versions = plugins.get(radical);
             if (!versions) {
                 plugins.set(radical, versions = []);

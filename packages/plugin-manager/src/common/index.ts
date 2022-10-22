@@ -14,16 +14,5 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
-import { bindContributionProvider } from '@theia/core';
-import { ContainerModule } from '@theia/core/shared/inversify';
-import { DefaultPluginUri, PluginUri } from '../common/plugin-uri';
-import { DefaultPluginManager } from './default-plugin-manager';
-import { DefaultPluginReducer } from './default-plugin-reducer';
-import { PluginManager, PluginProvider, PluginReducer } from './plugin-manager';
-
-export default new ContainerModule((bind, unbind, isBound, rebind) => {
-    bind(PluginUri).toConstantValue(DefaultPluginUri);
-    bindContributionProvider(bind, PluginProvider);
-    bind(PluginReducer).to(DefaultPluginReducer).inSingletonScope();
-    bind(PluginManager).to(DefaultPluginManager).inSingletonScope();
-});
+export { Plugin, DisabledPlugin, EnabledPlugin, InstalledPlugin, UninstalledPlugin } from './plugin';
+export { PluginUri } from './plugin-uri';

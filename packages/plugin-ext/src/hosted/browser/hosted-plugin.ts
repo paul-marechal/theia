@@ -241,8 +241,7 @@ export class HostedPluginSupport {
     }
 
     getPlugin(id: PluginIdentifiers.UnversionedId): DeployedPlugin | undefined {
-        const contributions = this.contributions.get(id);
-        return contributions && contributions.plugin;
+        return this.contributions.get(id)?.plugin;
     }
 
     /** do not call it, except from the plugin frontend contribution */

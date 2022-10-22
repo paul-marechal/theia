@@ -8,7 +8,7 @@
     "@theia/ovsx-client": "1.29.0",
     "@theia/plugin-ext": "1.29.0",
     "@theia/plugin-ext-vscode": "1.29.0",
-    "@theia/plugin-registry": "1.29.0",
+    "@theia/plugin-manager": "1.29.0",
     "@theia/preferences": "1.29.0",
     "@theia/workspace": "1.29.0",
     "luxon": "^2.4.0",

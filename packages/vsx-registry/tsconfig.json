@@ -25,6 +25,9 @@
       "path": "../plugin-ext-vscode"
     },
     {
+      "path": "../plugin-manager"
+    },
+    {
       "path": "../preferences"
     },
     {

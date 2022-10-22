@@ -17,7 +17,7 @@
 import React = require('@theia/core/shared/react');
 import { nls } from '@theia/core';
 import { TreeWidget } from '@theia/core/lib/browser';
-import { InstalledPlugin, Plugin } from '@theia/plugin-registry/lib/common/plugin';
+import { InstalledPlugin, Plugin } from '@theia/plugin-manager/lib/common/plugin';
 
 export namespace VsxExtensionAction {
 

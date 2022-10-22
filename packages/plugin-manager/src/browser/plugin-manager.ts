@@ -14,120 +14,70 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
-/* eslint-disable no-null/no-null */
-
-import { ContributionProvider, Event } from '@theia/core';
+import { Event } from '@theia/core';
 import URI from '@theia/core/lib/common/uri';
-import { inject, injectable, named } from '@theia/core/shared/inversify';
+import { interfaces } from '@theia/core/shared/inversify';
 import { Plugin } from '../common/plugin';
-import { PluginUri } from '../common/plugin-uri';
 
-export const PluginManager = Symbol('PluginManager');
+export interface PluginDescriptor {
+    type: string;
+    id: string;
+    builtin: boolean;
+    installed: boolean;
+    loaded: boolean;
+    enabled: boolean;
+    busy: Plugin.Transition;
+}
+
+export interface UpdatePluginsEvent {
+    [pluginUri: string]: PluginDescriptor | null;
+}
+
+export interface ProvidedPlugin {
+    provider: PluginProvider;
+    plugin: PluginDescriptor;
+}
+
+export interface ProvidedPlugins {
+    provider: PluginProvider;
+    plugins: PluginDescriptor[];
+}
+
+export interface ReducedPlugins {
+    [pluginUri: string]: ProvidedPlugin;
+}
+
+/**
+ * The plugin manager is the main API to list known plugins from various sources.
+ *
+ * The plugin manager is responsible for collecting data about plugins and exposing
+ * their state through the {@link Plugin} interface for each entry.
+ */
+export const PluginManager = Symbol('PluginManager') as symbol & interfaces.Abstract<PluginManager>;
 export interface PluginManager {
+    onDidAddPlugin: Event<Plugin>;
+    onDidRemovePlugin: Event<string>;
     getPlugins(): Promise<Plugin[]>;
     getPlugin(pluginUri: URI | string): Promise<Plugin | undefined>;
 }
 
-export interface PluginDescriptor {
-    id: string
-    loaded: boolean
-    enabled: boolean
-    busy: unknown
+/**
+ * The plugin reducer is the component that will resolve conflicts between duplicated
+ * plugin entries provided by the different sources.
+ *
+ * You may rebind this component in your application.
+ */
+export const PluginReducer = Symbol('PluginReducer') as symbol & interfaces.Abstract<PluginReducer>;
+export interface PluginReducer {
+    reducePlugins(plugins: ProvidedPlugins[]): Promise<ReducedPlugins>;
 }
 
-export interface UpdatePluginsEvent {
-    [pluginUri: string]: PluginDescriptor | null
-}
-
-export const PluginProviderContribution = Symbol('PluginProviderContribution');
-export interface PluginProviderContribution {
+export const PluginProvider = Symbol('PluginProvider') as symbol & interfaces.Abstract<PluginProvider>;
+export interface PluginProvider {
     onDidUpdatePlugins: Event<UpdatePluginsEvent>;
     getPlugins(): Promise<PluginDescriptor[]>;
     getPlugin(pluginUri: string): Promise<PluginDescriptor | undefined>;
     enablePlugin(pluginUri: string): Promise<void>;
     disablePlugin(pluginUri: string): Promise<void>;
     uninstallPlugin(pluginUri: string): Promise<void>;
-}
-
-@injectable()
-export class DefaultPluginManager implements PluginManager {
-
-    protected plugins = new Map<string, ProvidedPlugin>();
-    protected providers: PluginProviderContribution[];
-
-    @inject(PluginUri) protected pluginUri: PluginUri;
-
-    constructor(
-        @inject(ContributionProvider) @named(PluginProviderContribution)
-        providers: ContributionProvider<PluginProviderContribution>
-    ) {
-        this.providers = providers.getContributions();
-        this.providers.forEach(provider => provider.onDidUpdatePlugins(this.handleUpdatePluginsEvent, this));
-    }
-
-    async getPlugin(pluginUri: URI | string): Promise<Plugin | undefined> {
-        const radical = this.pluginUri.radical(pluginUri);
-        if (!radical) {
-            return;
-        }
-        let plugin = this.plugins.get(radical);
-        if (!plugin) {
-            plugin = await Promise.race(this.providers.map(async provider => {
-                const pluginDescriptor = await provider.getPlugin(radical);
-                if (pluginDescriptor) {
-                    return new ProvidedPlugin(pluginDescriptor, provider);
-                }
-            }));
-            if (plugin) {
-                this.plugins.set(radical, plugin);
-            }
-        }
-        return plugin;
-    }
-
-    async getPlugins(): Promise<Plugin[]> {
-        const plugins = await Promise.all(this.providers.map(async provider => {
-            const provided = await provider.getPlugins();
-            return provided.map(plugin => new ProvidedPlugin(plugin, provider));
-        }));
-        return plugins.flat();
-    }
-
-    protected handleUpdatePluginsEvent(event: UpdatePluginsEvent): void {
-        Object.entries(event).forEach(([pluginUri, pluginDescriptor]) => {
-            if (pluginDescriptor === null) {
-                this.plugins.delete(pluginUri);
-            } else {
-                this.plugins.get(pluginUri);
-            }
-        });
-    }
-}
-
-export class ProvidedPlugin implements Plugin {
-
-    type: Plugin.Type;
-    busy: Plugin.Transition;
-    onDidChangePlugin: Event<void>;
-
-    constructor(
-        protected pluginDescriptor: PluginDescriptor,
-        protected provider: PluginProviderContribution
-    ) { }
-
-    get id(): string {
-        return this.pluginDescriptor.id;
-    }
-
-    get installed(): boolean {
-        return true;
-    }
-
-    get loaded(): boolean {
-        return this.pluginDescriptor.loaded;
-    }
-
-    get enabled(): boolean {
-        return this.pluginDescriptor.enabled;
-    }
 }

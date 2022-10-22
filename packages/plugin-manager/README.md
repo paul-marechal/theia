@@ -12,11 +12,11 @@
 
 ## Description
 
-The `@theia/plugin-registry` extension provides a common UI to handle plugins generically.
+The `@theia/plugin-manager` extension provides a common UI to handle plugins generically.
 
 ## Additional Information
 
-- [API documentation for `@theia/vsx-registry`](https://eclipse-theia.github.io/theia/docs/next/modules/vsx-registry.html)
+- [API documentation for `@theia/plugin-manager`](https://eclipse-theia.github.io/theia/docs/next/modules/plugin-manager.html)
 - [Theia - GitHub](https://github.com/eclipse-theia/theia)
 - [Theia - Website](https://theia-ide.org/)
 

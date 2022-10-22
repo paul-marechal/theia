@@ -17,16 +17,14 @@
 import { expect } from 'chai';
 import { DefaultPluginUri } from './plugin-uri';
 
-describe('PluginUri', () => {
-
-    const pluginUri = new DefaultPluginUri();
+describe('DefaultPluginUri', () => {
 
     it('#create', () => {
-        const withoutVersion = pluginUri.create({
+        const withoutVersion = DefaultPluginUri.create({
             type: 'someType',
             id: 'somePublisher.somePlugin'
         });
-        const withVersion = pluginUri.create({
+        const withVersion = DefaultPluginUri.create({
             type: 'someType',
             id: 'somePublisher.somePlugin',
             version: '1.2.3'
@@ -41,19 +39,19 @@ describe('PluginUri', () => {
             id: 'somePublisher.somePlugin',
             version: '1.2.3'
         };
-        const uri = pluginUri.create(expected);
-        const parsed = pluginUri.parse(uri);
+        const uri = DefaultPluginUri.create(expected);
+        const parsed = DefaultPluginUri.parse(uri);
         expect(parsed).deep.equal(expected);
     });
 
     it('#simplified', () => {
-        const input = pluginUri.create({
+        const input = DefaultPluginUri.create({
             type: 'someType',
             id: 'somePublisher.somePlugin',
             version: '1.2.3',
             provider: 'someProvider'
         });
-        const radical = pluginUri.radical(input);
+        const radical = DefaultPluginUri.radical(input);
         expect(radical).eq('plugin:/someType/somePublisher.somePlugin');
     });
 });

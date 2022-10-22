@@ -14,6 +14,14 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
+/**
+ * Class decorator to type a class static fields according to {@link T}.
+ */
+export function classImplements<T>(): <U extends T>(target: U) => void {
+    // Actually do nothing, we only care about typings here
+    return () => { };
+}
+
 export interface ConcurrencyLockOptions {
     /**
      * Warn if `decorated.constructor.name !== 'AsyncFunction`.

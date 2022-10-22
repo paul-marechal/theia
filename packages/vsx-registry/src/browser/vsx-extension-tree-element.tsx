@@ -19,7 +19,7 @@ import { codicon, open, OpenerService, TooltipService, TreeWidget } from '@theia
 import { TreeElement } from '@theia/core/lib/browser/source-tree';
 import URI from '@theia/core/lib/common/uri';
 import { VSXExtensionNamespaceAccess, VSXUser } from '@theia/ovsx-client/lib/ovsx-types';
-import { Plugin } from '@theia/plugin-registry/lib/common/plugin';
+import { Plugin } from '@theia/plugin-manager/lib/common/plugin';
 import { VsxExtensionAction } from './vsx-extension-action';
 
 export const NUMBER_SHORT_COMPACT_FORMAT = new Intl.NumberFormat('en-US', {

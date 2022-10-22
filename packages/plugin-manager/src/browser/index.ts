@@ -14,12 +14,4 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 
-import { CancellationToken } from '@theia/core';
-import type { interfaces } from '@theia/core/shared/inversify';
-import type { Plugin } from './plugin';
-import type { PluginQuery } from './plugin-query';
-
-export const PluginProvider = Symbol('PluginProvider') as symbol & interfaces.Abstract<PluginProvider>;
-export interface PluginProvider<P extends Plugin = Plugin> {
-    queryPlugins(query: PluginQuery, cancel: CancellationToken): AsyncIterable<P[]>;
-}
+export { PluginDescriptor, PluginManager, PluginProvider, PluginReducer, ProvidedPlugin, ProvidedPlugins, ReducedPlugins, UpdatePluginsEvent } from './plugin-manager';
